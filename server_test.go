@@ -25,17 +25,17 @@ package main`}))
 	}
 	pInfo := srv.GetPageInfo("/src/"+packagePath, packagePath, NoFiltering, "linux", "amd64")
 
-	if pInfo.PDoc == nil {
-		t.Error("pInfo.PDoc = nil; want non-nil.")
+	if pInfo.DocPackage == nil {
+		t.Error("pInfo.DocPackage = nil; want non-nil.")
 	} else {
-		if got, want := pInfo.PDoc.Doc, packageComment+"\n"; got != want {
-			t.Errorf("pInfo.PDoc.Doc = %q; want %q.", got, want)
+		if got, want := pInfo.DocPackage.Doc, packageComment+"\n"; got != want {
+			t.Errorf("pInfo.DocPackage.Doc = %q; want %q.", got, want)
 		}
-		if got, want := pInfo.PDoc.Name, "main"; got != want {
-			t.Errorf("pInfo.PDoc.Name = %q; want %q.", got, want)
+		if got, want := pInfo.DocPackage.Name, "main"; got != want {
+			t.Errorf("pInfo.DocPackage.Name = %q; want %q.", got, want)
 		}
-		if got, want := pInfo.PDoc.ImportPath, packagePath; got != want {
-			t.Errorf("pInfo.PDoc.ImportPath = %q; want %q.", got, want)
+		if got, want := pInfo.DocPackage.ImportPath, packagePath; got != want {
+			t.Errorf("pInfo.DocPackage.ImportPath = %q; want %q.", got, want)
 		}
 	}
 	if pInfo.FSet == nil {
@@ -59,7 +59,7 @@ func F()
 		c: c,
 	}
 	pInfo := srv.GetPageInfo("/src/"+packagePath, packagePath, 0, "linux", "amd64")
-	if got, want := pInfo.PDoc.Funcs[0].Doc, "F doc //line 1 should appear\nline 2 should appear\n"; got != want {
-		t.Errorf("pInfo.PDoc.Funcs[0].Doc = %q; want %q", got, want)
+	if got, want := pInfo.DocPackage.Funcs[0].Doc, "F doc //line 1 should appear\nline 2 should appear\n"; got != want {
+		t.Errorf("pInfo.DocPackage.Funcs[0].Doc = %q; want %q", got, want)
 	}
 }

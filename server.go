@@ -47,7 +47,7 @@ func (h *handlerServer) registerWithMux(mux *http.ServeMux) {
 // parameter genAST is set, an AST containing only the package exports is
 // computed (PageInfo.PAst), otherwise package documentation (PageInfo.Doc)
 // is extracted from the AST. If there is no corresponding package in the
-// directory, PageInfo.PAst and PageInfo.PDoc are nil. If there are no sub-
+// directory, PageInfo.PAst and PageInfo.DocPackage are nil. If there are no sub-
 // directories, PageInfo.Dirs is nil. If an error occurred, PageInfo.Err is
 // set to the respective error but the error is not logged.
 //
@@ -143,19 +143,19 @@ func (h *handlerServer) GetPageInfo(abspath, relpath string, mode PageInfoMode, 
 			if mode&AllMethods != 0 {
 				m |= doc.AllMethods
 			}
-			info.PDoc = doc.New(pkg, pathpkg.Clean(relpath), m) // no trailing '/' in importpath
+			info.DocPackage = doc.New(pkg, pathpkg.Clean(relpath), m) // no trailing '/' in importpath
 			if mode&NoTypeAssoc != 0 {
-				for _, t := range info.PDoc.Types {
-					info.PDoc.Consts = append(info.PDoc.Consts, t.Consts...)
-					info.PDoc.Vars = append(info.PDoc.Vars, t.Vars...)
-					info.PDoc.Funcs = append(info.PDoc.Funcs, t.Funcs...)
+				for _, t := range info.DocPackage.Types {
+					info.DocPackage.Consts = append(info.DocPackage.Consts, t.Consts...)
+					info.DocPackage.Vars = append(info.DocPackage.Vars, t.Vars...)
+					info.DocPackage.Funcs = append(info.DocPackage.Funcs, t.Funcs...)
 					t.Consts = nil
 					t.Vars = nil
 					t.Funcs = nil
 				}
 				// for now we cannot easily sort consts and vars since
 				// go/doc.Value doesn't export the order information
-				sort.Sort(funcsByName(info.PDoc.Funcs))
+				sort.Sort(funcsByName(info.DocPackage.Funcs))
 			}
 
 			// collect examples
@@ -167,10 +167,10 @@ func (h *handlerServer) GetPageInfo(abspath, relpath string, mode PageInfoMode, 
 			info.Examples = collectExamples(h.c, pkg, files)
 
 			// collect any notes that we want to show
-			if info.PDoc.Notes != nil {
+			if info.DocPackage.Notes != nil {
 				// could regexp.Compile only once per godoc, but probably not worth it
 				if rx := h.p.NotesRx; rx != nil {
-					for m, n := range info.PDoc.Notes {
+					for m, n := range info.DocPackage.Notes {
 						if rx.MatchString(m) {
 							if info.Notes == nil {
 								info.Notes = make(map[string][]*doc.Note)
@@ -283,8 +283,8 @@ func (h *handlerServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			tabtitle = ast.Name.Name
 			break
 		}
-	case info.PDoc != nil:
-		tabtitle = info.PDoc.Name
+	case info.DocPackage != nil:
+		tabtitle = info.DocPackage.Name
 	default:
 		tabtitle = info.Dirname
 		title = "Directory "

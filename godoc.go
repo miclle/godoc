@@ -404,7 +404,7 @@ type PageInfo struct {
 
 	// package info
 	FSet       *token.FileSet         // nil if no package documentation
-	PDoc       *doc.Package           // nil if no package documentation
+	DocPackage *doc.Package           // nil if no package documentation
 	Examples   []*doc.Example         // nil if no example code
 	Notes      map[string][]*doc.Note // nil if no package Notes
 	PAst       map[string]*ast.File   // nil if no AST with package exports
@@ -424,7 +424,7 @@ type PageInfo struct {
 }
 
 func (info *PageInfo) IsEmpty() bool {
-	return info.Err != nil || info.PAst == nil && info.PDoc == nil && info.Dirs == nil
+	return info.Err != nil || info.PAst == nil && info.DocPackage == nil && info.Dirs == nil
 }
 
 func pkgLinkFunc(path string) string {
@@ -853,10 +853,10 @@ func (p *Presentation) writeNode(w io.Writer, pageInfo *PageInfo, fset *token.Fi
 
 	var pkgName, structName string
 	var apiInfo pkgAPIVersions
-	if gd, ok := x.(*ast.GenDecl); ok && pageInfo != nil && pageInfo.PDoc != nil &&
+	if gd, ok := x.(*ast.GenDecl); ok && pageInfo != nil && pageInfo.DocPackage != nil &&
 		p.Corpus != nil &&
 		gd.Tok == token.TYPE && len(gd.Specs) != 0 {
-		pkgName = pageInfo.PDoc.ImportPath
+		pkgName = pageInfo.DocPackage.ImportPath
 		if ts, ok := gd.Specs[0].(*ast.TypeSpec); ok {
 			if _, ok := ts.Type.(*ast.StructType); ok {
 				structName = ts.Name.Name
