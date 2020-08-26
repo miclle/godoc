@@ -66,10 +66,6 @@ var files = []string{
 	"methodset.html",
 	"package.html",
 	"implements.html",
-	"search.html",
-	"searchcode.html",
-	"searchdoc.html",
-	"searchtxt.html",
 }
 
 // Generate reads a set of files and returns a file buffer that declares

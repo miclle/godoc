@@ -1259,61 +1259,6 @@ func isIdentifier(s string) bool {
 	return len(s) > 0
 }
 
-// For a given query, which is either a single identifier or a qualified
-// identifier, Lookup returns a SearchResult containing packages, a LookupResult, a
-// list of alternative spellings, and identifiers, if any. Any and all results
-// may be nil.  If the query syntax is wrong, an error is reported.
-func (x *Index) Lookup(query string) (*SearchResult, error) {
-	ss := strings.Split(query, ".")
-
-	// check query syntax
-	for _, s := range ss {
-		if !isIdentifier(s) {
-			return nil, errors.New("all query parts must be identifiers")
-		}
-	}
-	rslt := &SearchResult{
-		Query:  query,
-		Idents: make(map[SpotKind][]Ident, 5),
-	}
-	// handle simple and qualified identifiers
-	switch len(ss) {
-	case 1:
-		ident := ss[0]
-		rslt.Hit, rslt.Alt = x.lookupWord(ident)
-		if rslt.Hit != nil {
-			// found a match - filter packages with same name
-			// for the list of packages called ident, if any
-			rslt.Pak = rslt.Hit.Others.filter(ident)
-		}
-		for k, v := range x.idents {
-			const rsltLimit = 50
-			ids := byImportCount{v[ident], x.importCount}
-			rslt.Idents[k] = ids.top(rsltLimit)
-		}
-
-	case 2:
-		pakname, ident := ss[0], ss[1]
-		rslt.Hit, rslt.Alt = x.lookupWord(ident)
-		if rslt.Hit != nil {
-			// found a match - filter by package name
-			// (no paks - package names are not qualified)
-			decls := rslt.Hit.Decls.filter(pakname)
-			others := rslt.Hit.Others.filter(pakname)
-			rslt.Hit = &LookupResult{decls, others}
-		}
-		for k, v := range x.idents {
-			ids := byImportCount{v[ident], x.importCount}
-			rslt.Idents[k] = ids.filter(pakname)
-		}
-
-	default:
-		return nil, errors.New("query is not a (qualified) identifier")
-	}
-
-	return rslt, nil
-}
-
 func (x *Index) Snippet(i int) *Snippet {
 	// handle illegal snippet indices gracefully
 	if 0 <= i && i < len(x.snippets) {

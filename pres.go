@@ -9,9 +9,6 @@ import (
 	"github.com/miclle/godoc/vfs/httpfs"
 )
 
-// SearchResultFunc functions return an HTML body for displaying search results.
-type SearchResultFunc func(p *Presentation, result SearchResult) []byte
-
 // Presentation generates output from a corpus.
 type Presentation struct {
 	Corpus *Corpus
@@ -31,12 +28,7 @@ type Presentation struct {
 	ImplementsHTML,
 	MethodSetHTML,
 	PackageHTML,
-	PackageRootHTML,
-	SearchHTML,
-	SearchDocHTML,
-	SearchCodeHTML,
-	SearchTxtHTML,
-	SearchDescXML *template.Template // If not nil, register a /opensearch.xml handler with this template.
+	PackageRootHTML *template.Template // If not nil
 
 	// TabWidth optionally specifies the tab width.
 	TabWidth int
@@ -76,10 +68,6 @@ type Presentation struct {
 	// the query string highlighted.
 	URLForSrcQuery func(src, query string, line int) string
 
-	// SearchResults optionally specifies a list of functions returning an HTML
-	// body for displaying search results.
-	SearchResults []SearchResultFunc
-
 	// GoogleAnalytics optionally adds Google Analytics via the provided
 	// tracking ID to each page.
 	GoogleAnalytics string
@@ -103,11 +91,6 @@ func NewPresentation(c *Corpus) *Presentation {
 
 		TabWidth:  4,
 		DeclLinks: true,
-		SearchResults: []SearchResultFunc{
-			(*Presentation).SearchResultDoc,
-			(*Presentation).SearchResultCode,
-			(*Presentation).SearchResultTxt,
-		},
 	}
 	p.cmdHandler = handlerServer{
 		p:       p,
@@ -126,10 +109,6 @@ func NewPresentation(c *Corpus) *Presentation {
 	p.cmdHandler.registerWithMux(p.mux)
 	p.pkgHandler.registerWithMux(p.mux)
 	p.mux.HandleFunc("/", p.ServeFile)
-	p.mux.HandleFunc("/search", p.HandleSearch)
-	if p.SearchDescXML != nil {
-		p.mux.HandleFunc("/opensearch.xml", p.serveSearchDesc)
-	}
 	return p
 }
 
