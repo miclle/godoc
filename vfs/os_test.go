@@ -1,0 +1,34 @@
+package vfs_test
+
+import (
+	"os"
+	"runtime"
+	"testing"
+
+	"github.com/miclle/godoc/vfs"
+)
+
+func TestRootType(t *testing.T) {
+	goPath := os.Getenv("GOPATH")
+	var expectedType vfs.RootType
+	if goPath == "" {
+		expectedType = ""
+	} else {
+		expectedType = vfs.RootTypeGoPath
+	}
+	tests := []struct {
+		path   string
+		fsType vfs.RootType
+	}{
+		{runtime.GOROOT(), vfs.RootTypeGoRoot},
+		{goPath, expectedType},
+		{"/tmp/", ""},
+	}
+
+	for _, item := range tests {
+		fs := vfs.OS(item.path)
+		if fs.RootType("path") != item.fsType {
+			t.Errorf("unexpected fsType. Expected- %v, Got- %v", item.fsType, fs.RootType("path"))
+		}
+	}
+}
