@@ -528,14 +528,14 @@ document.onClickComm = function(index) {
   showLowFrame(html);
 };
 
-$(window).load(function() {
+$(window).on('load', function(){
     // Scroll window so that first selection is visible.
     // (This means we don't need to emit id='L%d' spans for each line.)
     // TODO(adonovan): ideally, scroll it so that it's under the pointer,
     // but I don't know how to get the pointer y coordinate.
     var elts = document.getElementsByClassName("selection");
     if (elts.length > 0) {
-	elts[0].scrollIntoView()
+	    elts[0].scrollIntoView()
     }
 });
 

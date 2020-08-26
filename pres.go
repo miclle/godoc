@@ -21,11 +21,13 @@ type Presentation struct {
 	cmdHandler handlerServer
 	pkgHandler handlerServer
 
+	LayoutHTML,
+	SidebarHTML,
+
 	CallGraphHTML,
 	DirlistHTML,
 	ErrorHTML,
 	ExampleHTML,
-	GodocHTML,
 	ImplementsHTML,
 	MethodSetHTML,
 	PackageHTML,

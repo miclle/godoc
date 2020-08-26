@@ -61,15 +61,19 @@ func readTemplate(name string) *template.Template {
 }
 
 func readTemplates(p *godoc.Presentation) {
+	p.LayoutHTML = readTemplate("layout.html")
+	p.SidebarHTML = readTemplate("sidebar.html")
+
+	p.PackageRootHTML = readTemplate("packageroot.html")
+	p.PackageHTML = readTemplate("package.html")
+
 	p.CallGraphHTML = readTemplate("callgraph.html")
 	p.DirlistHTML = readTemplate("dirlist.html")
 	p.ErrorHTML = readTemplate("error.html")
 	p.ExampleHTML = readTemplate("example.html")
-	p.GodocHTML = readTemplate("layout.html")
 	p.ImplementsHTML = readTemplate("implements.html")
 	p.MethodSetHTML = readTemplate("methodset.html")
-	p.PackageHTML = readTemplate("package.html")
-	p.PackageRootHTML = readTemplate("packageroot.html")
+
 	p.SearchHTML = readTemplate("search.html")
 	p.SearchDocHTML = readTemplate("searchdoc.html")
 	p.SearchCodeHTML = readTemplate("searchcode.html")

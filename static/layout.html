@@ -17,17 +17,25 @@
   <link rel="stylesheet" href="/lib/godoc/jquery.treeview.css">
   {{end}}
 
+  <link type="text/css" rel="stylesheet" href="/lib/godoc/bootstrap-grid.min.css">
+	<link type="text/css" rel="stylesheet" href="/lib/godoc/bootstrap-reboot.min.css">
+  <link type="text/css" rel="stylesheet" href="/lib/godoc/bootstrap.min.css">
+
   <script>window.initFuncs = [];</script>
 
-  <script src="/lib/godoc/jquery.js" defer></script>
+  <script src="/lib/godoc/jquery.js"></script>
+  <script src="/lib/godoc/popper.min.js"></script>
+
+	<script src="/lib/godoc/bootstrap.bundle.min.js"></script>
+  <script src="/lib/godoc/bootstrap.min.js"></script>
 
   {{if .TreeView}}
-  <script src="/lib/godoc/jquery.treeview.js" defer></script>
-  <script src="/lib/godoc/jquery.treeview.edit.js" defer></script>
+  <script src="/lib/godoc/jquery.treeview.js"></script>
+  <script src="/lib/godoc/jquery.treeview.edit.js"></script>
   {{end}}
 
   {{if .Playground}}
-  <script src="/lib/godoc/playground.js" defer></script>
+  <script src="/lib/godoc/playground.js"></script>
   {{end}}
 
   {{with .Version}}
@@ -69,32 +77,42 @@
   </div>
 
   <div id="page"{{if .Title}} class="wide"{{end}}>
-    <div class="container">
 
-      {{if or .Title .SrcPath}}
-      <h1>
-        {{html .Title}}
-        {{html .SrcPath | srcBreadcrumb}}
-      </h1>
-      {{end}}
+    <div class="container-fluid">
+      <div class="row flex-xl-nowrap">
 
-      {{with .Subtitle}}
-      <h2>{{html .}}</h2>
-      {{end}}
+        <div id="sidebar" class="col-md-3 col-xl-2">
+          {{printf "%s" .Sidebar}} {{/* Sidebar is HTML-escaped elsewhere */}}
+        </div>
 
-      {{with .SrcPath}}
-      <h2>Documentation: {{html . | srcToPkgLink}}</h2>
-      {{end}}
+        <main class="col-md-9 col-xl-10 py-md-3 pl-md-5">
 
-      {{/* The Table of Contents is automatically inserted in this <div>. Do not delete this <div>. */}}
-      <div id="nav"></div>
+          {{if or .Title .SrcPath}}
+          <h1>
+            {{html .Title}}
+            {{html .SrcPath | srcBreadcrumb}}
+          </h1>
+          {{end}}
 
-      {{/* Body is HTML-escaped elsewhere */}}
-      {{printf "%s" .Body}}
+          {{with .Subtitle}}
+          <h2>{{html .}}</h2>
+          {{end}}
+
+          {{with .SrcPath}}
+          <h2>Documentation: {{html . | srcToPkgLink}}</h2>
+          {{end}}
+
+          {{/* The Table of Contents is automatically inserted in this <div>. Do not delete this <div>. */}}
+          <div id="nav"></div>
+
+          {{printf "%s" .Body}}{{/* Body is HTML-escaped elsewhere */}}
+        </main>
+      </div>
 
       <div id="footer">Made by godoc</div>
 
     </div><!-- .container -->
+
   </div><!-- #page -->
 </body>
 </html>

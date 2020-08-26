@@ -28,12 +28,7 @@ var files = []string{
 	"analysis/ipcg-pkg.png",
 	"analysis/typeinfo-pkg.png",
 	"analysis/typeinfo-src.png",
-	"callgraph.html",
-	"dirlist.html",
-	"error.html",
-	"example.html",
-	"layout.html",
-	"godocs.js",
+
 	"images/minus.gif",
 	"images/plus.gif",
 	"images/treeview-black-line.gif",
@@ -42,21 +37,39 @@ var files = []string{
 	"images/treeview-default.gif",
 	"images/treeview-gray-line.gif",
 	"images/treeview-gray.gif",
-	"implements.html",
+
+	"bootstrap-grid.min.css",
+	"bootstrap-reboot.min.css",
+	"bootstrap.min.css",
+	"bootstrap.bundle.min.js",
+	"bootstrap.min.js",
+	"popper.min.js",
+
 	"jquery.js",
 	"jquery.treeview.css",
 	"jquery.treeview.edit.js",
 	"jquery.treeview.js",
-	"methodset.html",
-	"package.html",
-	"packageroot.html",
+	"godocs.js",
 	"play.js",
 	"playground.js",
+
+	"style.css",
+
+	"layout.html",
+	"sidebar.html",
+	"packageroot.html",
+
+	"callgraph.html",
+	"dirlist.html",
+	"error.html",
+	"example.html",
+	"methodset.html",
+	"package.html",
+	"implements.html",
 	"search.html",
 	"searchcode.html",
 	"searchdoc.html",
 	"searchtxt.html",
-	"style.css",
 }
 
 // Generate reads a set of files and returns a file buffer that declares

@@ -39,8 +39,8 @@ type handlerServer struct {
 	exclude     []string // file system paths to exclude; e.g. "/src/cmd"
 }
 
-func (s *handlerServer) registerWithMux(mux *http.ServeMux) {
-	mux.Handle(s.pattern, s)
+func (h *handlerServer) registerWithMux(mux *http.ServeMux) {
+	mux.Handle(h.pattern, h)
 }
 
 // GetPageInfo returns the PageInfo for a package directory abspath. If the
@@ -325,17 +325,26 @@ func (h *handlerServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	info.GoogleCN = googleCN(r)
-	var body []byte
+
+	var sidebar, body []byte
+
+	// TODO: package page info.Dirs if empty
+	sidebar = applyTemplate(h.p.SidebarHTML, "sidebarHTML", info)
+
 	if info.Dirname == "/src" {
 		body = applyTemplate(h.p.PackageRootHTML, "packageRootHTML", info)
 	} else {
 		body = applyTemplate(h.p.PackageHTML, "packageHTML", info)
 	}
+
 	h.p.ServePage(w, Page{
 		Title:    title,
 		Tabtitle: tabtitle,
 		Subtitle: subtitle,
-		Body:     body,
+
+		Sidebar: sidebar,
+		Body:    body,
+
 		GoogleCN: info.GoogleCN,
 		TreeView: hasTreeView,
 	})

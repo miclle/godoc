@@ -17,7 +17,10 @@ type Page struct {
 	Subtitle string
 	SrcPath  string
 	Query    string
-	Body     []byte
+
+	Sidebar []byte // Sidebar content
+	Body    []byte // Main content
+
 	GoogleCN bool // page is being served from golang.google.cn
 	TreeView bool // page needs to contain treeview related js and css
 
@@ -36,7 +39,9 @@ func (p *Presentation) ServePage(w http.ResponseWriter, page Page) {
 	page.Playground = p.ShowPlayground
 	page.Version = runtime.Version()
 	page.GoogleAnalytics = p.GoogleAnalytics
-	applyTemplateToResponseWriter(w, p.GodocHTML, page)
+
+	// render page with layout
+	applyTemplateToResponseWriter(w, p.LayoutHTML, page)
 }
 
 func (p *Presentation) ServeError(w http.ResponseWriter, r *http.Request, relpath string, err error) {
