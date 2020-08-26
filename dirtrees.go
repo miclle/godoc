@@ -239,28 +239,28 @@ func (c *Corpus) newDirectory(root string, maxDepth int) *Directory {
 	return b.newDirTree(token.NewFileSet(), root, d.Name(), 0)
 }
 
-func (dir *Directory) walk(c chan<- *Directory, skipRoot bool) {
-	if dir != nil {
+func (directory *Directory) walk(c chan<- *Directory, skipRoot bool) {
+	if directory != nil {
 		if !skipRoot {
-			c <- dir
+			c <- directory
 		}
-		for _, d := range dir.Dirs {
+		for _, d := range directory.Dirs {
 			d.walk(c, false)
 		}
 	}
 }
 
-func (dir *Directory) iter(skipRoot bool) <-chan *Directory {
+func (directory *Directory) iter(skipRoot bool) <-chan *Directory {
 	c := make(chan *Directory)
 	go func() {
-		dir.walk(c, skipRoot)
+		directory.walk(c, skipRoot)
 		close(c)
 	}()
 	return c
 }
 
-func (dir *Directory) lookupLocal(name string) *Directory {
-	for _, d := range dir.Dirs {
+func (directory *Directory) lookupLocal(name string) *Directory {
+	for _, d := range directory.Dirs {
 		if d.Name == name {
 			return d
 		}
@@ -277,8 +277,8 @@ func splitPath(p string) []string {
 }
 
 // lookup looks for the *Directory for a given path, relative to dir.
-func (dir *Directory) lookup(path string) *Directory {
-	d := splitPath(dir.Path)
+func (directory *Directory) lookup(path string) *Directory {
+	d := splitPath(directory.Path)
 	p := splitPath(path)
 	i := 0
 	for i < len(d) {
@@ -287,11 +287,11 @@ func (dir *Directory) lookup(path string) *Directory {
 		}
 		i++
 	}
-	for dir != nil && i < len(p) {
-		dir = dir.lookupLocal(p[i])
+	for directory != nil && i < len(p) {
+		directory = directory.lookupLocal(p[i])
 		i++
 	}
-	return dir
+	return directory
 }
 
 // DirEntry describes a directory entry. The Depth and Height values
@@ -328,8 +328,8 @@ func hasThirdParty(list []DirEntry) bool {
 // If filter is set, only the directory entries whose paths match the filter
 // are included.
 //
-func (root *Directory) listing(skipRoot bool, filter func(string) bool) *DirList {
-	if root == nil {
+func (directory *Directory) listing(skipRoot bool, filter func(string) bool) *DirList {
+	if directory == nil {
 		return nil
 	}
 
@@ -337,7 +337,7 @@ func (root *Directory) listing(skipRoot bool, filter func(string) bool) *DirList
 	n := 0
 	minDepth := 1 << 30 // infinity
 	maxDepth := 0
-	for d := range root.iter(skipRoot) {
+	for d := range directory.iter(skipRoot) {
 		n++
 		if minDepth > d.Depth {
 			minDepth = d.Depth
@@ -354,7 +354,7 @@ func (root *Directory) listing(skipRoot bool, filter func(string) bool) *DirList
 
 	// create list
 	list := make([]DirEntry, 0, n)
-	for d := range root.iter(skipRoot) {
+	for d := range directory.iter(skipRoot) {
 		if filter != nil && !filter(d.Path) {
 			continue
 		}
@@ -364,7 +364,7 @@ func (root *Directory) listing(skipRoot bool, filter func(string) bool) *DirList
 		// the path is relative to root.Path - remove the root.Path
 		// prefix (the prefix should always be present but avoid
 		// crashes and check)
-		path := strings.TrimPrefix(d.Path, root.Path)
+		path := strings.TrimPrefix(d.Path, directory.Path)
 		// remove leading separator if any - path must be relative
 		path = strings.TrimPrefix(path, "/")
 		p.Path = path
