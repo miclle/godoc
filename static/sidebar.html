@@ -1,10 +1,4 @@
-<!-- packageroot.html -->
-<!--
-	Note: Static (i.e., not template-generated) href and id
-	attributes start with "pkg-" to make it impossible for
-	them to conflict with generated attributes (some of which
-	correspond to Go identifiers).
--->
+<!-- sidebar.html -->
 {{with .PAst}}
 	{{range $filename, $ast := .}}
 		<a href="{{$filename|srcLink|html}}">{{$filename|filename|html}}</a>:<pre>{{node_html $ $ast false}}</pre>
@@ -12,31 +6,18 @@
 {{end}}
 
 {{with .Dirs}}
-	{{/* DirList entries are numbers and strings - no need for FSet */}}
-	{{if $.PDoc}}
-		<h2 id="pkg-subdirectories">Subdirectories</h2>
-	{{end}}
-		<div id="manual-nav">
-			<dl>
-				<dt><a href="#stdlib">Standard library</a></dt>
-				{{if hasThirdParty .List }}
-					<dt><a href="#thirdparty">Third party</a></dt>
-				{{end}}
-			</dl>
-		</div>
+  {{/* DirList entries are numbers and strings - no need for FSet */}}
 
 		<div id="stdlib" class="toggleVisible">
 			<div class="collapsed">
-				<h2 class="toggleButton" title="Click to show Standard library section">Standard library ▹</h2>
+				<h3 class="toggleButton" title="Click to show Standard library section">Standard library ▹</h3>
 			</div>
 			<div class="expanded">
-				<h2 class="toggleButton" title="Click to hide Standard library section">Standard library ▾</h2>
-				<img alt="" class="gopher" src="/doc/gopher/pkg.png"/>
+				<h3 class="toggleButton" title="Click to hide Standard library section">Standard library ▾</h3>
 				<div class="pkg-dir">
 					<table>
 						<tr>
 							<th class="pkg-name">Name</th>
-							<th class="pkg-synopsis">Synopsis</th>
 						</tr>
 
 						{{range .List}}
@@ -53,9 +34,6 @@
 										<a href="{{html .Path}}/{{modeQueryString $.Mode | html}}">{{html .Name}}</a>
 									</td>
 							{{end}}
-								<td class="pkg-synopsis">
-									{{html .Synopsis}}
-								</td>
 							{{end}}
 							</tr>
 						{{end}}
@@ -67,15 +45,14 @@
 	{{if hasThirdParty .List }}
 		<div id="thirdparty" class="toggleVisible">
 			<div class="collapsed">
-				<h2 class="toggleButton" title="Click to show Third party section">Third party ▹</h2>
+				<h3 class="toggleButton" title="Click to show Third party section">Third party ▹</h3>
 			</div>
 			<div class="expanded">
-				<h2 class="toggleButton" title="Click to hide Third party section">Third party ▾</h2>
+				<h3 class="toggleButton" title="Click to hide Third party section">Third party ▾</h3>
 				<div class="pkg-dir">
 					<table>
 						<tr>
 							<th class="pkg-name">Name</th>
-							<th class="pkg-synopsis">Synopsis</th>
 						</tr>
 
 						{{range .List}}
@@ -92,9 +69,6 @@
 											<a href="{{html .Path}}/{{modeQueryString $.Mode | html}}">{{html .Name}}</a>
 										</td>
 								{{end}}
-									<td class="pkg-synopsis">
-										{{html .Synopsis}}
-									</td>
 								{{end}}
 							</tr>
 						{{end}}
@@ -104,4 +78,4 @@
 		</div> <!-- #stdlib .toggleVisible -->
 	{{end}}
 {{end}}
-<!-- end packageroot.html -->
+<!-- end sidebar.html -->
