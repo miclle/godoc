@@ -5,9 +5,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"strings"
-
-	"github.com/miclle/godoc/golangorgenv"
 )
 
 // Page describes the contents of the top-level godoc webpage.
@@ -21,7 +18,6 @@ type Page struct {
 	Sidebar []byte // Sidebar content
 	Body    []byte // Main content
 
-	GoogleCN bool // page is being served from golang.google.cn
 	TreeView bool // page needs to contain treeview related js and css
 
 	// filled in by ServePage
@@ -58,26 +54,6 @@ func (p *Presentation) ServeError(w http.ResponseWriter, r *http.Request, relpat
 		Title:           "File " + relpath,
 		Subtitle:        relpath,
 		Body:            applyTemplate(p.ErrorHTML, "errorHTML", err),
-		GoogleCN:        googleCN(r),
 		GoogleAnalytics: p.GoogleAnalytics,
 	})
-}
-
-// googleCN reports whether request r is considered
-// to be served from golang.google.cn.
-func googleCN(r *http.Request) bool {
-	if r.FormValue("googlecn") != "" {
-		return true
-	}
-	if strings.HasSuffix(r.Host, ".cn") {
-		return true
-	}
-	if !golangorgenv.CheckCountry() {
-		return false
-	}
-	switch r.Header.Get("X-Appengine-Country") {
-	case "", "ZZ", "CN":
-		return true
-	}
-	return false
 }

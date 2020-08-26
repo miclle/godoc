@@ -324,8 +324,6 @@ func (h *handlerServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		info.TypeInfoIndex[ti.Name] = i
 	}
 
-	info.GoogleCN = googleCN(r)
-
 	var sidebar, body []byte
 
 	// TODO: package page info.Dirs if empty
@@ -345,7 +343,6 @@ func (h *handlerServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Sidebar: sidebar,
 		Body:    body,
 
-		GoogleCN: info.GoogleCN,
 		TreeView: hasTreeView,
 	})
 }
@@ -615,7 +612,6 @@ func (p *Presentation) serveTextFile(w http.ResponseWriter, r *http.Request, abs
 		SrcPath:  relpath,
 		Tabtitle: relpath,
 		Body:     buf.Bytes(),
-		GoogleCN: googleCN(r),
 	})
 }
 
@@ -694,7 +690,6 @@ func (p *Presentation) serveDirectory(w http.ResponseWriter, r *http.Request, ab
 		SrcPath:  relpath,
 		Tabtitle: relpath,
 		Body:     applyTemplate(p.DirlistHTML, "dirlistHTML", list),
-		GoogleCN: googleCN(r),
 	})
 }
 
@@ -723,7 +718,6 @@ func (p *Presentation) ServeHTMLDoc(w http.ResponseWriter, r *http.Request, absp
 	page := Page{
 		Title:    meta.Title,
 		Subtitle: meta.Subtitle,
-		GoogleCN: googleCN(r),
 	}
 
 	// evaluate as template if indicated
