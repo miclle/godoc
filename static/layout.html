@@ -85,7 +85,7 @@
           {{printf "%s" .Sidebar}} {{/* Sidebar is HTML-escaped elsewhere */}}
         </div>
 
-        <main class="col-md-9 col-xl-10 py-md-3 pl-md-5">
+        <main id="main-column" class="col-md-9 col-xl-10 py-md-3 pl-md-5">
 
           {{if or .Title .SrcPath}}
           <h1>

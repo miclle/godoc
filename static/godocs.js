@@ -124,45 +124,6 @@ function bindToggleLinks(selector, prefix) {
   });
 }
 
-function setupDropdownPlayground() {
-  if (!$('#page').is('.wide')) {
-    return; // don't show on front page
-  }
-  var button = $('#playgroundButton');
-  var div = $('#playground');
-  var setup = false;
-  button.toggle(function() {
-    button.addClass('active');
-    div.show();
-    if (setup) {
-      return;
-    }
-    setup = true;
-    playground({
-      'codeEl': $('.code', div),
-      'outputEl': $('.output', div),
-      'runEl': $('.run', div),
-      'fmtEl': $('.fmt', div),
-      'shareEl': $('.share', div),
-      'shareRedirect': '//play.golang.org/p/'
-    });
-  },
-  function() {
-    button.removeClass('active');
-    div.hide();
-  });
-  $('#menu').css('min-width', '+=60');
-
-  // Hide inline playground if we click somewhere on the page.
-  // This is needed in mobile devices, where the "Play" button
-  // is not clickable once the playground opens up.
-  $("#page").click(function() {
-    if (button.hasClass('active')) {
-      button.click();
-    }
-  });
-}
-
 function setupInlinePlayground() {
 	'use strict';
 	// Set up playground when each element is toggled.
@@ -209,22 +170,6 @@ function setupInlinePlayground() {
 	});
 }
 
-// fixFocus tries to put focus to div#page so that keyboard navigation works.
-function fixFocus() {
-  var page = $('div#page');
-  var topbar = $('div#topbar');
-  page.css('outline', 0); // disable outline when focused
-  page.attr('tabindex', -1); // and set tabindex so that it is focusable
-  $(window).resize(function (evt) {
-    // only focus page when the topbar is at fixed position (that is, it's in
-    // front of page, and keyboard event will go to the former by default.)
-    // by focusing page, keyboard event will go to page so that up/down arrow,
-    // space, etc. will work as expected.
-    if (topbar.css('position') == "fixed")
-      page.focus();
-  }).resize();
-}
-
 function toggleHash() {
   var id = window.location.hash.substring(1);
   // Open all of the toggles for a particular hash.
@@ -246,73 +191,6 @@ function toggleHash() {
   }
 }
 
-function personalizeInstallInstructions() {
-  var prefix = '?download=';
-  var s = window.location.search;
-  if (s.indexOf(prefix) != 0) {
-    // No 'download' query string; detect "test" instructions from User Agent.
-    if (navigator.platform.indexOf('Win') != -1) {
-      $('.testUnix').hide();
-      $('.testWindows').show();
-    } else {
-      $('.testUnix').show();
-      $('.testWindows').hide();
-    }
-    return;
-  }
-
-  var filename = s.substr(prefix.length);
-  var filenameRE = /^go1\.\d+(\.\d+)?([a-z0-9]+)?\.([a-z0-9]+)(-[a-z0-9]+)?(-osx10\.[68])?\.([a-z.]+)$/;
-  var m = filenameRE.exec(filename);
-  if (!m) {
-    // Can't interpret file name; bail.
-    return;
-  }
-  $('.downloadFilename').text(filename);
-  $('.hideFromDownload').hide();
-
-  var os = m[3];
-  var ext = m[6];
-  if (ext != 'tar.gz') {
-    $('#tarballInstructions').hide();
-  }
-  if (os != 'darwin' || ext != 'pkg') {
-    $('#darwinPackageInstructions').hide();
-  }
-  if (os != 'windows') {
-    $('#windowsInstructions').hide();
-    $('.testUnix').show();
-    $('.testWindows').hide();
-  } else {
-    if (ext != 'msi') {
-      $('#windowsInstallerInstructions').hide();
-    }
-    if (ext != 'zip') {
-      $('#windowsZipInstructions').hide();
-    }
-    $('.testUnix').hide();
-    $('.testWindows').show();
-  }
-
-  var download = "https://dl.google.com/go/" + filename;
-
-  var message = $('<p class="downloading">'+
-    'Your download should begin shortly. '+
-    'If it does not, click <a>this link</a>.</p>');
-  message.find('a').attr('href', download);
-  message.insertAfter('#nav');
-
-  window.location = download;
-}
-
-function updateVersionTags() {
-  var v = window.goVersion;
-  if (/^go[0-9.]+$/.test(v)) {
-    $(".versionTag").empty().text(v);
-    $(".whereTag").hide();
-  }
-}
-
 function addPermalinks() {
   function addPermalink(source, parent) {
     var id = source.attr("id");
@@ -327,12 +205,12 @@ function addPermalinks() {
     parent.append(" ").append($("<a class='permalink'>&#xb6;</a>").attr("href", "#" + id));
   }
 
-  $("#page .container").find("h2[id], h3[id]").each(function() {
+  $("#page .container-fluid").find("h2[id], h3[id]").each(function() {
     var el = $(this);
     addPermalink(el, el);
   });
 
-  $("#page .container").find("dl[id]").each(function() {
+  $("#page .container-fluid").find("dl[id]").each(function() {
     var el = $(this);
     // Add the anchor to the "dt" element.
     addPermalink(el, el.find("> dt").first());
@@ -370,14 +248,10 @@ $(document).ready(function() {
   bindToggleLinks(".overviewLink", "");
   bindToggleLinks(".examplesLink", "");
   bindToggleLinks(".indexLink", "");
-  setupDropdownPlayground();
   setupInlinePlayground();
-  fixFocus();
   setupTypeInfo();
   setupCallgraphs();
   toggleHash();
-  personalizeInstallInstructions();
-  updateVersionTags();
 
   // layout.html defines window.initFuncs in the <head> tag, and root.html and
   // codewalk.js push their on-page-ready functions to the list.

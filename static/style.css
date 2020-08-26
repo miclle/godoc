@@ -222,21 +222,15 @@ div#topbar {
 	overflow: hidden;
 }
 
-div#page {
-	width: 100%;
-}
-div#page > .container,
 div#topbar > .container {
 	text-align: left;
 	margin-left: auto;
 	margin-right: auto;
 	padding: 0 1.25rem;
 }
-div#topbar > .container,
-div#page > .container {
+div#topbar > .container{
 	max-width: 59.38rem;
 }
-div#page.wide > .container,
 div#topbar.wide > .container {
 	max-width: none;
 }
@@ -788,10 +782,6 @@ a.error {
 	pre,
 	code {
 		font-size: 0.866rem;
-	}
-
-	div#page > .container {
-		padding: 0 0.625rem;
 	}
 
 	div#topbar {
