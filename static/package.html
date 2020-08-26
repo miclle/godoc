@@ -1,9 +1,4 @@
 <!--
-	Copyright 2009 The Go Authors. All rights reserved.
-	Use of this source code is governed by a BSD-style
-	license that can be found in the LICENSE file.
--->
-<!--
 	Note: Static (i.e., not template-generated) href and id
 	attributes start with "pkg-" to make it impossible for
 	them to conflict with generated attributes (some of which
@@ -11,8 +6,8 @@
 -->
 {{with .PDoc}}
 	<script>
-	document.ANALYSIS_DATA = {{$.AnalysisData}};
-	document.CALLGRAPH = {{$.CallGraph}};
+		document.ANALYSIS_DATA = {{$.AnalysisData}};
+		document.CALLGRAPH = {{$.CallGraph}};
 	</script>
 
 	{{if $.IsMain}}
@@ -22,14 +17,16 @@
 		{{/* package documentation */}}
 		<div id="short-nav">
 			<dl>
-			<dd><code>import "{{html .ImportPath}}"</code></dd>
+				<dd><code>import "{{html .ImportPath}}"</code></dd>
 			</dl>
 			<dl>
-			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
-			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+				<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+				<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+
 			{{if $.Examples}}
 				<dd><a href="#pkg-examples" class="examplesLink">Examples</a></dd>
 			{{end}}
+
 			{{if $.Dirs}}
 				<dd><a href="#pkg-subdirectories">Subdirectories</a></dd>
 			{{end}}
@@ -48,68 +45,73 @@
 		</div>
 
 		<div id="pkg-index" class="toggleVisible">
-		<div class="collapsed">
-			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
-		</div>
-		<div class="expanded">
-			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+			</div>
 
-		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
-			<div id="manual-nav">
-			<dl>
-			{{if .Consts}}
-				<dd><a href="#pkg-constants">Constants</a></dd>
-			{{end}}
-			{{if .Vars}}
-				<dd><a href="#pkg-variables">Variables</a></dd>
-			{{end}}
-			{{range .Funcs}}
-				{{$name_html := html .Name}}
-				<dd><a href="#{{$name_html}}">{{node_html $ .Decl false | sanitize}}</a></dd>
-			{{end}}
-			{{range .Types}}
-				{{$tname_html := html .Name}}
-				<dd><a href="#{{$tname_html}}">type {{$tname_html}}</a></dd>
-				{{range .Funcs}}
-					{{$name_html := html .Name}}
-					<dd>&nbsp; &nbsp; <a href="#{{$name_html}}">{{node_html $ .Decl false | sanitize}}</a></dd>
-				{{end}}
-				{{range .Methods}}
-					{{$name_html := html .Name}}
-					<dd>&nbsp; &nbsp; <a href="#{{$tname_html}}.{{$name_html}}">{{node_html $ .Decl false | sanitize}}</a></dd>
-				{{end}}
-			{{end}}
-			{{if $.Notes}}
-				{{range $marker, $item := $.Notes}}
-				<dd><a href="#pkg-note-{{$marker}}">{{noteTitle $marker | html}}s</a></dd>
-				{{end}}
-			{{end}}
-			</dl>
-			</div><!-- #manual-nav -->
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
 
-		{{if $.Examples}}
-		<div id="pkg-examples">
-			<h3>Examples</h3>
-			<div class="js-expandAll expandAll collapsed">(Expand All)</div>
-			<dl>
-			{{range $.Examples}}
-			<dd><a class="exampleLink" href="#example_{{.Name}}">{{example_name .Name}}</a></dd>
-			{{end}}
-			</dl>
-		</div>
-		{{end}}
+				<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+				<div id="manual-nav">
+					<dl>
+					{{if .Consts}}
+						<dd><a href="#pkg-constants">Constants</a></dd>
+					{{end}}
 
-		{{with .Filenames}}
-			<h3>Package files</h3>
-			<p>
-			<span style="font-size:90%">
-			{{range .}}
-				<a href="{{.|srcLink|html}}">{{.|filename|html}}</a>
+					{{if .Vars}}
+						<dd><a href="#pkg-variables">Variables</a></dd>
+					{{end}}
+
+					{{range .Funcs}}
+						{{$name_html := html .Name}}
+						<dd><a href="#{{$name_html}}">{{node_html $ .Decl false | sanitize}}</a></dd>
+					{{end}}
+
+					{{range .Types}}
+						{{$tname_html := html .Name}}
+						<dd><a href="#{{$tname_html}}">type {{$tname_html}}</a></dd>
+						{{range .Funcs}}
+							{{$name_html := html .Name}}
+							<dd>&nbsp; &nbsp; <a href="#{{$name_html}}">{{node_html $ .Decl false | sanitize}}</a></dd>
+						{{end}}
+						{{range .Methods}}
+							{{$name_html := html .Name}}
+							<dd>&nbsp; &nbsp; <a href="#{{$tname_html}}.{{$name_html}}">{{node_html $ .Decl false | sanitize}}</a></dd>
+						{{end}}
+					{{end}}
+
+					{{if $.Notes}}
+						{{range $marker, $item := $.Notes}}
+						<dd><a href="#pkg-note-{{$marker}}">{{noteTitle $marker | html}}s</a></dd>
+						{{end}}
+					{{end}}
+					</dl>
+				</div><!-- #manual-nav -->
+
+			{{if $.Examples}}
+				<div id="pkg-examples">
+					<h3>Examples</h3>
+					<div class="js-expandAll expandAll collapsed">(Expand All)</div>
+					<dl>
+					{{range $.Examples}}
+						<dd><a class="exampleLink" href="#example_{{.Name}}">{{example_name .Name}}</a></dd>
+					{{end}}
+					</dl>
+				</div>
 			{{end}}
-			</span>
-			</p>
-		{{end}}
-		</div><!-- .expanded -->
+
+			{{with .Filenames}}
+				<h3>Package files</h3>
+				<p>
+					<span style="font-size:90%">
+					{{range .}}
+						<a href="{{.|srcLink|html}}">{{.|filename|html}}</a>
+					{{end}}
+					</span>
+				</p>
+			{{end}}
+			</div><!-- .expanded -->
 		</div><!-- #pkg-index -->
 
 		{{if ne $.CallGraph "null"}}
