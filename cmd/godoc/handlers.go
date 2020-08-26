@@ -65,7 +65,7 @@ func readTemplates(p *godoc.Presentation) {
 	p.DirlistHTML = readTemplate("dirlist.html")
 	p.ErrorHTML = readTemplate("error.html")
 	p.ExampleHTML = readTemplate("example.html")
-	p.GodocHTML = readTemplate("godoc.html")
+	p.GodocHTML = readTemplate("layout.html")
 	p.ImplementsHTML = readTemplate("implements.html")
 	p.MethodSetHTML = readTemplate("methodset.html")
 	p.PackageHTML = readTemplate("package.html")

@@ -32,7 +32,7 @@ var files = []string{
 	"dirlist.html",
 	"error.html",
 	"example.html",
-	"godoc.html",
+	"layout.html",
 	"godocs.js",
 	"images/minus.gif",
 	"images/plus.gif",

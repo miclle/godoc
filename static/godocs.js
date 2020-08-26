@@ -1,7 +1,3 @@
-// Copyright 2012 The Go Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
-
 /* A little code to ease navigation of these documents.
  *
  * On window load we:
@@ -383,7 +379,7 @@ $(document).ready(function() {
   personalizeInstallInstructions();
   updateVersionTags();
 
-  // godoc.html defines window.initFuncs in the <head> tag, and root.html and
+  // layout.html defines window.initFuncs in the <head> tag, and root.html and
   // codewalk.js push their on-page-ready functions to the list.
   // We execute those functions here, to avoid loading jQuery until the page
   // content is loaded.
