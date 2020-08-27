@@ -860,3 +860,9 @@ a.error {
 		white-space: pre-wrap;
 	}
 }
+
+#sidebar {
+	ul, li {
+		list-style: none;
+	}
+}
