@@ -23,6 +23,8 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/yosssi/gohtml"
+
 	"github.com/miclle/godoc/analysis"
 	"github.com/miclle/godoc/util"
 	"github.com/miclle/godoc/vfs"
@@ -194,27 +196,26 @@ func (h *handlerServer) GetPageInfo(abspath, relpath string, mode PageInfoMode, 
 	}
 
 	// get directory information, if any
-	var directory *Directory
 	var timestamp time.Time
 	if tree, ts := h.c.fsTree.Get(); tree != nil && tree.(*Directory) != nil {
 		// directory tree is present; lookup respective directory
 		// (may still fail if the file system was updated and the
 		// new directory tree has not yet been computed)
-		directory = tree.(*Directory).lookup(abspath)
+		info.Directory = tree.(*Directory).lookup(abspath)
 		timestamp = ts
 	}
-	if directory == nil {
+	if info.Directory == nil {
 		// TODO(agnivade): handle this case better, now since there is no CLI mode.
 		// no directory tree present (happens in command-line mode);
 		// compute 2 levels for this page. The second level is to
 		// get the synopses of sub-directories.
 		// note: cannot use path filter here because in general
 		// it doesn't contain the FSTree path
-		directory = h.c.newDirectory(abspath, 2)
+		info.Directory = h.c.newDirectory(abspath, 2)
 		timestamp = time.Now()
 	}
 
-	info.DirectoryList = directory.listing(true, func(path string) bool { return h.includePath(path, mode) })
+	info.DirectoryList = info.Directory.listing(true, func(path string) bool { return h.includePath(path, mode) })
 
 	info.DirectoryTime = timestamp
 	info.DirectoryFlat = mode&FlatDir != 0
@@ -512,19 +513,6 @@ func applyTemplate(t *template.Template, name string, data interface{}) []byte {
 	return buf.Bytes()
 }
 
-type writerCapturesErr struct {
-	w   io.Writer
-	err error
-}
-
-func (w *writerCapturesErr) Write(p []byte) (int, error) {
-	n, err := w.w.Write(p)
-	if err != nil {
-		w.err = err
-	}
-	return n, err
-}
-
 // applyTemplateToResponseWriter uses an http.ResponseWriter as the io.Writer
 // for the call to template.Execute.  It uses an io.Writer wrapper to capture
 // errors from the underlying http.ResponseWriter.  Errors are logged only when
@@ -532,13 +520,16 @@ func (w *writerCapturesErr) Write(p []byte) (int, error) {
 // polluting log files with error messages due to networking issues, such as
 // client disconnects and http HEAD protocol violations.
 func applyTemplateToResponseWriter(rw http.ResponseWriter, t *template.Template, data interface{}) {
-	w := &writerCapturesErr{w: rw}
-	err := t.Execute(w, data)
-	// There are some cases where template.Execute does not return an error when
-	// rw returns an error, and some where it does.  So check w.err first.
-	if w.err == nil && err != nil {
-		// Log template errors.
+
+	var buf bytes.Buffer
+	if err := t.Execute(&buf, data); err != nil {
 		log.Printf("%s.Execute: %s", t.Name(), err)
+	}
+
+	// format template html
+	gohtml.Condense = true
+	if _, err := rw.Write(gohtml.FormatBytes(buf.Bytes())); err != nil {
+		log.Printf("http.ResponseWriter.Write: %s", err)
 	}
 }
 
