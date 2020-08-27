@@ -28,7 +28,7 @@ type Directory struct {
 	HasPkg           bool         // true if the directory contains at least one package
 	Synopsis         string       // package documentation, if any
 	RootType         vfs.RootType // root type of the filesystem containing the directory
-	SubDirectoryList []*Directory // subdirectories
+	SubDirectories []*Directory // subdirectories
 }
 
 func isGoFile(fi os.FileInfo) bool {
@@ -200,7 +200,7 @@ func (b *treeBuilder) newDirTree(fset *token.FileSet, path, name string, depth i
 		HasPkg:           hasPkgFiles && show, // TODO(bradfitz): add proper Hide field?
 		Synopsis:         synopsis,
 		RootType:         b.c.fs.RootType(path),
-		SubDirectoryList: directories,
+		SubDirectories: directories,
 	}
 }
 
@@ -244,7 +244,7 @@ func (directory *Directory) walk(c chan<- *Directory, skipRoot bool) {
 		if !skipRoot {
 			c <- directory
 		}
-		for _, d := range directory.SubDirectoryList {
+		for _, d := range directory.SubDirectories {
 			d.walk(c, false)
 		}
 	}
@@ -260,7 +260,7 @@ func (directory *Directory) iter(skipRoot bool) <-chan *Directory {
 }
 
 func (directory *Directory) lookupLocal(name string) *Directory {
-	for _, d := range directory.SubDirectoryList {
+	for _, d := range directory.SubDirectories {
 		if d.Name == name {
 			return d
 		}

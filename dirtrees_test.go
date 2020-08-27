@@ -26,7 +26,7 @@ func TestNewDirTree(t *testing.T) {
 
 func processDir(t *testing.T, dir *Directory) {
 	var list []string
-	for _, d := range dir.SubDirectoryList {
+	for _, d := range dir.SubDirectories {
 		list = append(list, d.Name)
 		// recursively process the lower level
 		processDir(t, d)

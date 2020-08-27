@@ -80,6 +80,7 @@ func (p *Presentation) initFuncMap() {
 		// support for URL attributes
 		"pkgLink":       pkgLinkFunc,
 		"srcLink":       srcLinkFunc,
+		"srcID":         srcIDFunc,
 		"posLink_url":   newPosLink_urlFunc(srcPosLinkFunc),
 		"docLink":       docLinkFunc,
 		"queryLink":     queryLinkFunc,
@@ -414,6 +415,7 @@ type PageInfo struct {
 	CallGraphIndex map[string]int  // maps func name to index in CallGraph
 
 	// directory info
+	Directory     *Directory
 	DirectoryList *DirectoryList // nil if no directory information
 	DirectoryTime time.Time      // directory time stamp
 	DirectoryFlat bool           // if set, show directory in a flat (non-indented) manner
@@ -535,6 +537,13 @@ func srcLinkFunc(s string) string {
 	if !strings.HasPrefix(s, "/src/") {
 		s = "/src" + s
 	}
+	return s
+}
+
+// conversion / to -
+func srcIDFunc(s string) string {
+	s = strings.ReplaceAll(s, "/", "-")
+	s = strings.ReplaceAll(s, ".", "-")
 	return s
 }
 

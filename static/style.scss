@@ -1,11 +1,9 @@
 body {
 	margin: 0;
-	font-family: Arial, sans-serif;
-	background-color: #fff;
-	line-height: 1.3;
-	text-align: center;
+	padding-top: 56px;
 	color: #222;
 }
+
 textarea {
 	/* Inherit text color from body avoiding illegible text in the case where the
  	* user has inverted the browsers custom text and background colors. */
@@ -50,18 +48,6 @@ pre .ln {
    * for more information. */
 	display: inline-block;
 	width: 8ch;
-}
-
-.search-nav{
-	margin-left: 1.25rem;
-	font-size: 0.875rem;
-	column-gap: 1.25rem;
-	column-fill: auto;
-	column-width: 14rem;
-}
-
-.search-nav .indent {
-	margin-left: 1.25rem;
 }
 
 a,
@@ -216,24 +202,6 @@ div#nav table td {
 	margin: 1.25rem 0;
 }
 
-div#topbar {
-	background: #E0EBF5;
-	height: 4rem;
-	overflow: hidden;
-}
-
-div#topbar > .container {
-	text-align: left;
-	margin-left: auto;
-	margin-right: auto;
-	padding: 0 1.25rem;
-}
-div#topbar > .container{
-	max-width: 59.38rem;
-}
-div#topbar.wide > .container {
-	max-width: none;
-}
 div#plusone {
 	float: right;
 	clear: right;
@@ -248,7 +216,6 @@ div#footer {
 }
 
 div#menu > a,
-input#search,
 div#learn .buttons a,
 div.play .buttons a,
 div#blog .read a,
@@ -261,7 +228,6 @@ div#blog .read a,
 }
 div#playground .buttons a,
 div#menu > a,
-input#search,
 #menu-button {
 	border: 0.0625rem solid #375EAB;
 }
@@ -316,45 +282,6 @@ div#menu > a,
 	display: inline-flex;
 	width: 8.75rem;
 }
-input#search {
-	background: white;
-	color: #222;
-	box-sizing: border-box;
-	-webkit-appearance: none;
-	border-top-right-radius: 0;
-	border-bottom-right-radius: 0;
-	border-right: 0;
-	margin-right: 0;
-	flex-grow: 1;
-	max-width: 100%;
-	min-width: 5.625rem;
-}
-input#search:-webkit-search-decoration {
-	-webkit-appearance: none;
-}
-input#search:-moz-ui-invalid {
-	box-shadow: unset;
-}
-input#search + button {
-	display: inline;
-	font-size: 1em;
-	background-color: #375EAB;
-	color: white;
-	border: 0.0625rem solid #375EAB;
-	border-top-left-radius: 0;
-	border-top-right-radius: 0.3125rem;
-	border-bottom-left-radius: 0;
-	border-bottom-right-radius: 0.3125rem;
-	margin-left: 0;
-	cursor: pointer;
-}
-input#search + button span {
-	display: flex;
-}
-input#search + button svg {
-	fill: white
-}
-
 #menu-button {
 	display: none;
 	position: absolute;
@@ -758,17 +685,6 @@ a.error {
 	}
 }
 
-@media (min-width: 43.75em) and (max-width: 62.5em) {
-	div#menu > a {
-		margin: 0.3125rem 0;
-		font-size: 0.875rem;
-	}
-
-	input#search {
-		font-size: 0.875rem;
-	}
-}
-
 @media (max-width: 43.75em) {
 	body {
 		font-size: 0.9375rem;
@@ -782,15 +698,6 @@ a.error {
 	pre,
 	code {
 		font-size: 0.866rem;
-	}
-
-	div#topbar {
-		height: auto;
-		padding: 0.625rem;
-	}
-
-	div#topbar > .container {
-		padding: 0;
 	}
 
 	#heading-wide {
@@ -861,8 +768,65 @@ a.error {
 	}
 }
 
+// --------------------------------------------------------------------
+
+.navbar {
+	background: #FFF;
+	box-shadow: 0 2px 4px 0 rgba(0,0,0,.1);
+}
+
+.expand-icon {
+	display: inline-block;
+	width: 13px;
+	height: 13px;
+	top: 11px;
+	margin-left: -16px;
+	position: absolute;
+	background-image: url(/lib/godoc/images/icon-chevron-right.svg);
+	background-repeat: no-repeat;
+	background-size: 13px;
+}
+
 #sidebar {
-	ul, li {
-		list-style: none;
+	width: 330px;
+	padding: 0;
+	border-right: 1px solid #e0e7e8;
+
+	.sphinxsidebar {
+		width: 330px;
+		font-size: 16px;
+		line-height: 20px;
+		top: 56px;
+		bottom: 0;
+		position: fixed;
+		overflow-y: auto;
+
+		ul, li {
+			list-style: none;
+			margin: 0;
+			padding: 0;
+		}
+
+		> ul {
+			> li {
+				line-height: 24px;
+				border-bottom: 1px solid #e0e7e8;
+				padding: 5px 0;
+				overflow-x: auto;
+
+				li {
+					padding-left: 24px;
+				}
+			}
+		}
+	}
+
+	a.package {
+    display: inline-block;
+		width: 100%;
+		padding: 5px 5px 5px 24px;
+		line-height: 24px;
+		position: relative;
+		color: #222;
 	}
 }
