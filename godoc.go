@@ -414,13 +414,13 @@ type PageInfo struct {
 	CallGraphIndex map[string]int  // maps func name to index in CallGraph
 
 	// directory info
-	Dirs    *DirList  // nil if no directory information
-	DirTime time.Time // directory time stamp
-	DirFlat bool      // if set, show directory in a flat (non-indented) manner
+	DirectoryList *DirectoryList // nil if no directory information
+	DirectoryTime time.Time      // directory time stamp
+	DirectoryFlat bool           // if set, show directory in a flat (non-indented) manner
 }
 
 func (info *PageInfo) IsEmpty() bool {
-	return info.Err != nil || info.PAst == nil && info.DocPackage == nil && info.Dirs == nil
+	return info.Err != nil || info.PAst == nil && info.DocPackage == nil && info.DirectoryList == nil
 }
 
 func pkgLinkFunc(path string) string {

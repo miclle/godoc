@@ -28,7 +28,7 @@
 				<dd><a href="#pkg-examples" class="examplesLink">Examples</a></dd>
 			{{end}}
 
-			{{if $.Dirs}}
+			{{if $.DirectoryList}}
 				<dd><a href="#pkg-subdirectories">Subdirectories</a></dd>
 			{{end}}
 			</dl>
@@ -254,7 +254,7 @@
 	{{end}}
 {{end}}
 
-{{with .Dirs}}
+{{with .DirectoryList}}
 	{{/* DirList entries are numbers and strings - no need for FSet */}}
 	{{if $.DocPackage}}
 		<h2 id="pkg-subdirectories">Subdirectories</h2>
@@ -266,7 +266,7 @@
 				<th class="pkg-synopsis">Synopsis</th>
 			</tr>
 
-			{{if not (or (eq $.Dirname "/src/cmd") $.DirFlat)}}
+			{{if not (or (eq $.Dirname "/src/cmd") $.DirectoryFlat)}}
 			<tr>
 				<td colspan="2"><a href="..">..</a></td>
 			</tr>
@@ -274,7 +274,7 @@
 
 			{{range .List}}
 				<tr>
-				{{if $.DirFlat}}
+				{{if $.DirectoryFlat}}
 					{{if .HasPkg}}
 						<td class="pkg-name">
 							<a href="{{html .Path}}/{{modeQueryString $.Mode | html}}">{{html .Path}}</a>

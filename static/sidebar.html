@@ -5,7 +5,7 @@
 	{{end}}
 {{end}}
 
-{{with .Dirs}}
+{{with .DirectoryList}}
   {{/* DirList entries are numbers and strings - no need for FSet */}}
 
 		<div id="stdlib" class="toggleVisible">
@@ -23,7 +23,7 @@
 						{{range .List}}
 							<tr>
 							{{if eq .RootType "GOROOT"}}
-							{{if $.DirFlat}}
+							{{if $.DirectoryFlat}}
 								{{if .HasPkg}}
 										<td class="pkg-name">
 											<a href="{{html .Path}}/{{modeQueryString $.Mode | html}}">{{html .Path}}</a>
@@ -58,7 +58,7 @@
 						{{range .List}}
 							<tr>
 								{{if eq .RootType "GOPATH"}}
-								{{if $.DirFlat}}
+								{{if $.DirectoryFlat}}
 									{{if .HasPkg}}
 											<td class="pkg-name">
 												<a href="{{html .Path}}/{{modeQueryString $.Mode | html}}">{{html .Path}}</a>

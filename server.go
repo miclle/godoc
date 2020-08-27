@@ -48,7 +48,7 @@ func (h *handlerServer) registerWithMux(mux *http.ServeMux) {
 // computed (PageInfo.PAst), otherwise package documentation (PageInfo.Doc)
 // is extracted from the AST. If there is no corresponding package in the
 // directory, PageInfo.PAst and PageInfo.DocPackage are nil. If there are no sub-
-// directories, PageInfo.Dirs is nil. If an error occurred, PageInfo.Err is
+// directories, PageInfo.DirectoryList is nil. If an error occurred, PageInfo.Err is
 // set to the respective error but the error is not logged.
 //
 func (h *handlerServer) GetPageInfo(abspath, relpath string, mode PageInfoMode, goos, goarch string) *PageInfo {
@@ -194,29 +194,30 @@ func (h *handlerServer) GetPageInfo(abspath, relpath string, mode PageInfoMode, 
 	}
 
 	// get directory information, if any
-	var dir *Directory
+	var directory *Directory
 	var timestamp time.Time
 	if tree, ts := h.c.fsTree.Get(); tree != nil && tree.(*Directory) != nil {
 		// directory tree is present; lookup respective directory
 		// (may still fail if the file system was updated and the
 		// new directory tree has not yet been computed)
-		dir = tree.(*Directory).lookup(abspath)
+		directory = tree.(*Directory).lookup(abspath)
 		timestamp = ts
 	}
-	if dir == nil {
+	if directory == nil {
 		// TODO(agnivade): handle this case better, now since there is no CLI mode.
 		// no directory tree present (happens in command-line mode);
 		// compute 2 levels for this page. The second level is to
 		// get the synopses of sub-directories.
 		// note: cannot use path filter here because in general
 		// it doesn't contain the FSTree path
-		dir = h.c.newDirectory(abspath, 2)
+		directory = h.c.newDirectory(abspath, 2)
 		timestamp = time.Now()
 	}
-	info.Dirs = dir.listing(true, func(path string) bool { return h.includePath(path, mode) })
 
-	info.DirTime = timestamp
-	info.DirFlat = mode&FlatDir != 0
+	info.DirectoryList = directory.listing(true, func(path string) bool { return h.includePath(path, mode) })
+
+	info.DirectoryTime = timestamp
+	info.DirectoryFlat = mode&FlatDir != 0
 
 	return info
 }
@@ -289,7 +290,7 @@ func (h *handlerServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		tabtitle = info.Dirname
 		title = "Directory "
 		if h.p.ShowTimestamps {
-			subtitle = "Last update: " + info.DirTime.String()
+			subtitle = "Last update: " + info.DirectoryTime.String()
 		}
 	}
 	if title == "" {
@@ -326,7 +327,7 @@ func (h *handlerServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	var sidebar, body []byte
 
-	// TODO: package page info.Dirs if empty
+	// TODO: package page info.DirectoryList if empty
 	sidebar = applyTemplate(h.p.SidebarHTML, "sidebarHTML", info)
 
 	if info.Dirname == "/src" {

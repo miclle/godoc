@@ -22,13 +22,13 @@ import (
 const testdataDirName = "testdata"
 
 type Directory struct {
-	Depth    int
-	Path     string       // directory path; includes Name
-	Name     string       // directory name
-	HasPkg   bool         // true if the directory contains at least one package
-	Synopsis string       // package documentation, if any
-	RootType vfs.RootType // root type of the filesystem containing the directory
-	Dirs     []*Directory // subdirectories
+	Depth            int
+	Path             string       // directory path; includes Name
+	Name             string       // directory name
+	HasPkg           bool         // true if the directory contains at least one package
+	Synopsis         string       // package documentation, if any
+	RootType         vfs.RootType // root type of the filesystem containing the directory
+	SubDirectoryList []*Directory // subdirectories
 }
 
 func isGoFile(fi os.FileInfo) bool {
@@ -108,7 +108,7 @@ func (b *treeBuilder) newDirTree(fset *token.FileSet, path, name string, depth i
 
 	// determine number of subdirectories and if there are package files
 	var dirchs []chan *Directory
-	var dirs []*Directory
+	var directories []*Directory
 
 	for _, d := range list {
 		filename := pathpkg.Join(path, d.Name())
@@ -127,7 +127,7 @@ func (b *treeBuilder) newDirTree(fset *token.FileSet, path, name string, depth i
 				// no free workers, do work synchronously
 				dir := b.newDirTree(fset, filename, name, depth+1)
 				if dir != nil {
-					dirs = append(dirs, dir)
+					directories = append(directories, dir)
 				}
 			}
 		case !haveSummary && isPkgFile(d):
@@ -169,19 +169,19 @@ func (b *treeBuilder) newDirTree(fset *token.FileSet, path, name string, depth i
 	// create subdirectory tree
 	for _, ch := range dirchs {
 		if d := <-ch; d != nil {
-			dirs = append(dirs, d)
+			directories = append(directories, d)
 		}
 	}
 
-	// We need to sort the dirs slice because
+	// We need to sort the directories slice because
 	// it is appended again after reading from dirchs.
-	sort.Slice(dirs, func(i, j int) bool {
-		return dirs[i].Name < dirs[j].Name
+	sort.Slice(directories, func(i, j int) bool {
+		return directories[i].Name < directories[j].Name
 	})
 
 	// if there are no package files and no subdirectories
 	// containing package files, ignore the directory
-	if !hasPkgFiles && len(dirs) == 0 {
+	if !hasPkgFiles && len(directories) == 0 {
 		return nil
 	}
 
@@ -194,13 +194,13 @@ func (b *treeBuilder) newDirTree(fset *token.FileSet, path, name string, depth i
 	}
 
 	return &Directory{
-		Depth:    depth,
-		Path:     path,
-		Name:     name,
-		HasPkg:   hasPkgFiles && show, // TODO(bradfitz): add proper Hide field?
-		Synopsis: synopsis,
-		RootType: b.c.fs.RootType(path),
-		Dirs:     dirs,
+		Depth:            depth,
+		Path:             path,
+		Name:             name,
+		HasPkg:           hasPkgFiles && show, // TODO(bradfitz): add proper Hide field?
+		Synopsis:         synopsis,
+		RootType:         b.c.fs.RootType(path),
+		SubDirectoryList: directories,
 	}
 }
 
@@ -244,7 +244,7 @@ func (directory *Directory) walk(c chan<- *Directory, skipRoot bool) {
 		if !skipRoot {
 			c <- directory
 		}
-		for _, d := range directory.Dirs {
+		for _, d := range directory.SubDirectoryList {
 			d.walk(c, false)
 		}
 	}
@@ -260,7 +260,7 @@ func (directory *Directory) iter(skipRoot bool) <-chan *Directory {
 }
 
 func (directory *Directory) lookupLocal(name string) *Directory {
-	for _, d := range directory.Dirs {
+	for _, d := range directory.SubDirectoryList {
 		if d.Name == name {
 			return d
 		}
@@ -294,10 +294,10 @@ func (directory *Directory) lookup(path string) *Directory {
 	return directory
 }
 
-// DirEntry describes a directory entry. The Depth and Height values
+// DirectoryEntry describes a directory entry. The Depth and Height values
 // are useful for presenting an entry in an indented fashion.
 //
-type DirEntry struct {
+type DirectoryEntry struct {
 	Depth    int          // >= 0
 	Height   int          // = DirList.MaxHeight - Depth, > 0
 	Path     string       // directory path; includes Name, relative to DirList root
@@ -307,14 +307,14 @@ type DirEntry struct {
 	RootType vfs.RootType // root type of the filesystem containing the direntry
 }
 
-type DirList struct {
+type DirectoryList struct {
 	MaxHeight int // directory tree height, > 0
-	List      []DirEntry
+	List      []DirectoryEntry
 }
 
 // hasThirdParty checks whether a list of directory entries has packages outside
 // the standard library or not.
-func hasThirdParty(list []DirEntry) bool {
+func hasThirdParty(list []DirectoryEntry) bool {
 	for _, entry := range list {
 		if entry.RootType == vfs.RootTypeGoPath {
 			return true
@@ -328,7 +328,7 @@ func hasThirdParty(list []DirEntry) bool {
 // If filter is set, only the directory entries whose paths match the filter
 // are included.
 //
-func (directory *Directory) listing(skipRoot bool, filter func(string) bool) *DirList {
+func (directory *Directory) listing(skipRoot bool, filter func(string) bool) *DirectoryList {
 	if directory == nil {
 		return nil
 	}
@@ -353,12 +353,12 @@ func (directory *Directory) listing(skipRoot bool, filter func(string) bool) *Di
 	}
 
 	// create list
-	list := make([]DirEntry, 0, n)
+	list := make([]DirectoryEntry, 0, n)
 	for d := range directory.iter(skipRoot) {
 		if filter != nil && !filter(d.Path) {
 			continue
 		}
-		var p DirEntry
+		var p DirectoryEntry
 		p.Depth = d.Depth - minDepth
 		p.Height = maxHeight - p.Depth
 		// the path is relative to root.Path - remove the root.Path
@@ -375,5 +375,5 @@ func (directory *Directory) listing(skipRoot bool, filter func(string) bool) *Di
 		list = append(list, p)
 	}
 
-	return &DirList{maxHeight, list}
+	return &DirectoryList{maxHeight, list}
 }
