@@ -41,6 +41,8 @@ var files = []string{
 	"images/treeview-default.gif",
 	"images/treeview-gray-line.gif",
 	"images/treeview-gray.gif",
+	"images/icon-chevron-down.svg",
+	"images/icon-chevron-right.svg",
 
 	"bootstrap-grid.min.css",
 	"bootstrap-reboot.min.css",
