@@ -4,7 +4,6 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/miclle/godoc/analysis"
 	"github.com/miclle/godoc/util"
 	"github.com/miclle/godoc/vfs"
 )
@@ -35,9 +34,6 @@ type Corpus struct {
 	// file system information
 	fsTree      util.RWValue // *Directory tree of packages, updated with each sync (but sync code is removed now)
 	docMetadata util.RWValue // mapping from paths to *Metadata
-
-	// Analysis is the result of type and pointer analysis.
-	Analysis analysis.Result
 
 	// flag to check whether a corpus is initialized or not
 	initMu   sync.RWMutex

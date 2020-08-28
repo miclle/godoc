@@ -18,8 +18,6 @@ type Page struct {
 	Sidebar []byte // Sidebar content
 	Body    []byte // Main content
 
-	TreeView bool // page needs to contain treeview related js and css
-
 	// filled in by ServePage
 	Playground      bool
 	Version         string

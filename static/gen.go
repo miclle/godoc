@@ -16,23 +16,6 @@ import (
 )
 
 var files = []string{
-	"analysis/call3.png",
-	"analysis/call-eg.png",
-	"analysis/callers1.png",
-	"analysis/callers2.png",
-	"analysis/chan1.png",
-	"analysis/chan2a.png",
-	"analysis/chan2b.png",
-	"analysis/error1.png",
-	"analysis/help.html",
-	"analysis/ident-def.png",
-	"analysis/ident-field.png",
-	"analysis/ident-func.png",
-	"analysis/ipcg-func.png",
-	"analysis/ipcg-pkg.png",
-	"analysis/typeinfo-pkg.png",
-	"analysis/typeinfo-src.png",
-
 	"images/minus.gif",
 	"images/plus.gif",
 	"images/treeview-black-line.gif",
@@ -52,9 +35,6 @@ var files = []string{
 	"popper.min.js",
 
 	"jquery.js",
-	"jquery.treeview.css",
-	"jquery.treeview.edit.js",
-	"jquery.treeview.js",
 	"godocs.js",
 	"play.js",
 	"playground.js",
@@ -64,14 +44,10 @@ var files = []string{
 	"layout.html",
 	"sidebar.html",
 	"packageroot.html",
-
-	"callgraph.html",
+	"package.html",
+	"example.html",
 	"dirlist.html",
 	"error.html",
-	"example.html",
-	"methodset.html",
-	"package.html",
-	"implements.html",
 }
 
 // Generate reads a set of files and returns a file buffer that declares

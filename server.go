@@ -10,7 +10,7 @@ import (
 	"go/doc"
 	"go/token"
 	htmlpkg "html"
-	htmltemplate "html/template"
+	// htmltemplate "html/template"
 	"io"
 	"io/ioutil"
 	"log"
@@ -25,7 +25,6 @@ import (
 
 	"github.com/yosssi/gohtml"
 
-	"github.com/miclle/godoc/analysis"
 	"github.com/miclle/godoc/util"
 	"github.com/miclle/godoc/vfs"
 )
@@ -249,31 +248,31 @@ func (h *handlerServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// since it's not helpful for this fake package (see issue 6645).
 		mode |= NoFiltering | NoTypeAssoc
 	}
-	info := h.GetPageInfo(abspath, relpath, mode, r.FormValue("GOOS"), r.FormValue("GOARCH"))
-	if info.Err != nil {
-		log.Print(info.Err)
-		h.p.ServeError(w, r, relpath, info.Err)
+	pageInfo := h.GetPageInfo(abspath, relpath, mode, r.FormValue("GOOS"), r.FormValue("GOARCH"))
+	if pageInfo.Err != nil {
+		log.Print(pageInfo.Err)
+		h.p.ServeError(w, r, relpath, pageInfo.Err)
 		return
 	}
 
 	var tabtitle, title, subtitle string
 	switch {
-	case info.PAst != nil:
-		for _, ast := range info.PAst {
+	case pageInfo.PAst != nil:
+		for _, ast := range pageInfo.PAst {
 			tabtitle = ast.Name.Name
 			break
 		}
-	case info.DocPackage != nil:
-		tabtitle = info.DocPackage.Name
+	case pageInfo.DocPackage != nil:
+		tabtitle = pageInfo.DocPackage.Name
 	default:
-		tabtitle = info.Dirname
+		tabtitle = pageInfo.Dirname
 		title = "Directory "
 		if h.p.ShowTimestamps {
-			subtitle = "Last update: " + info.DirectoryTime.String()
+			subtitle = "Last update: " + pageInfo.DirectoryTime.String()
 		}
 	}
 	if title == "" {
-		if info.IsMain {
+		if pageInfo.IsMain {
 			// assume that the directory name is the command name
 			_, tabtitle = pathpkg.Split(relpath)
 			title = "Command "
@@ -293,17 +292,6 @@ func (h *handlerServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		tabtitle = "Commands"
 	}
 
-	// Emit JSON array for type information.
-	pi := h.c.Analysis.PackageInfo(relpath)
-	hasTreeView := len(pi.CallGraph) != 0
-	info.CallGraphIndex = pi.CallGraphIndex
-	info.CallGraph = htmltemplate.JS(marshalJSON(pi.CallGraph))
-	info.AnalysisData = htmltemplate.JS(marshalJSON(pi.Types))
-	info.TypeInfoIndex = make(map[string]int)
-	for i, ti := range pi.Types {
-		info.TypeInfoIndex[ti.Name] = i
-	}
-
 	// set sidebar info
 	// ------------------------------------------------------------------
 	var sidebar, body []byte
@@ -317,10 +305,10 @@ func (h *handlerServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	sidebar = applyTemplate(h.p.SidebarHTML, "sidebarHTML", packages)
 	// ------------------------------------------------------------------
 
-	if info.Dirname == "/src" {
-		body = applyTemplate(h.p.PackageRootHTML, "packageRootHTML", info)
+	if pageInfo.Dirname == "/src" {
+		body = applyTemplate(h.p.PackageRootHTML, "packageRootHTML", pageInfo)
 	} else {
-		body = applyTemplate(h.p.PackageHTML, "packageHTML", info)
+		body = applyTemplate(h.p.PackageHTML, "packageHTML", pageInfo)
 	}
 
 	h.p.ServePage(w, Page{
@@ -330,8 +318,6 @@ func (h *handlerServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		Sidebar: sidebar,
 		Body:    body,
-
-		TreeView: hasTreeView,
 	})
 }
 
@@ -560,23 +546,11 @@ func (p *Presentation) serveTextFile(w http.ResponseWriter, r *http.Request, abs
 
 	h := r.FormValue("h")
 	s := RangeSelection(r.FormValue("s"))
-
+	// <a href="abcd">testlink</a>
 	var buf bytes.Buffer
 	if pathpkg.Ext(abspath) == ".go" {
-		// Find markup links for this file (e.g. "/src/fmt/print.go").
-		fi := p.Corpus.Analysis.FileInfo(abspath)
-		buf.WriteString("<script type='text/javascript'>document.ANALYSIS_DATA = ")
-		buf.Write(marshalJSON(fi.Data))
-		buf.WriteString(";</script>\n")
-
-		if status := p.Corpus.Analysis.Status(); status != "" {
-			buf.WriteString("<a href='/lib/godoc/analysis/help.html'>Static analysis features</a> ")
-			// TODO(adonovan): show analysis status at per-file granularity.
-			fmt.Fprintf(&buf, "<span style='color: grey'>[%s]</span><br/>", htmlpkg.EscapeString(status))
-		}
-
 		buf.WriteString("<pre>")
-		formatGoSource(&buf, src, fi.Links, h, s)
+		formatGoSource(&buf, src, h, s)
 		buf.WriteString("</pre>")
 	} else {
 		buf.WriteString("<pre>")
@@ -596,22 +570,23 @@ func (p *Presentation) serveTextFile(w http.ResponseWriter, r *http.Request, abs
 // formatGoSource HTML-escapes Go source text and writes it to w,
 // decorating it with the specified analysis links.
 //
-func formatGoSource(buf *bytes.Buffer, text []byte, links []analysis.Link, pattern string, selection Selection) {
+func formatGoSource(buf *bytes.Buffer, text []byte, pattern string, selection Selection) {
 	// Emit to a temp buffer so that we can add line anchors at the end.
 	saved, buf := buf, new(bytes.Buffer)
 
-	var i int
-	var link analysis.Link // shared state of the two funcs below
+	// var i int
+	// var link analysis.Link // shared state of the two funcs below
 	segmentIter := func() (seg Segment) {
-		if i < len(links) {
-			link = links[i]
-			i++
-			seg = Segment{link.Start(), link.End()}
-		}
+		// if i < len(links) {
+		// 	link = links[i]
+		// 	i++
+		// 	seg = Segment{link.Start(), link.End()}
+		// }
 		return
 	}
+
 	linkWriter := func(w io.Writer, offs int, start bool) {
-		link.Write(w, offs, start)
+		// link.Write(w, offs, start)
 	}
 
 	comments := tokenSelection(text, token.COMMENT)

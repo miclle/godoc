@@ -21,12 +21,10 @@ type Presentation struct {
 	LayoutHTML,
 	SidebarHTML,
 
-	CallGraphHTML,
 	DirlistHTML,
 	ErrorHTML,
 	ExampleHTML,
-	ImplementsHTML,
-	MethodSetHTML,
+
 	PackageHTML,
 	PackageRootHTML *template.Template // If not nil
 
