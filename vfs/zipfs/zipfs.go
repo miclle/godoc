@@ -47,7 +47,7 @@ func (fi zipFI) Size() int64 {
 
 func (fi zipFI) ModTime() time.Time {
 	if f := fi.file; f != nil {
-		return f.ModTime()
+		return f.Modified
 	}
 	return time.Time{} // directory has no modified time entry
 }

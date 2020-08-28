@@ -66,11 +66,6 @@ func (p *Presentation) initFuncMap() {
 		"fileInfoName": fileInfoNameFunc,
 		"fileInfoTime": fileInfoTimeFunc,
 
-		// access to search result information
-		"infoKind_html":    infoKind_htmlFunc,
-		"infoLine":         p.infoLineFunc,
-		"infoSnippet_html": p.infoSnippet_htmlFunc,
-
 		// formatting of AST nodes
 		"node":         p.nodeFunc,
 		"node_html":    p.node_htmlFunc,
@@ -149,36 +144,6 @@ var infoKinds = [nKinds]string{
 	FuncDecl:      "func&nbsp;decl",
 	MethodDecl:    "method&nbsp;decl",
 	Use:           "use",
-}
-
-func infoKind_htmlFunc(info SpotInfo) string {
-	return infoKinds[info.Kind()] // infoKind entries are html-escaped
-}
-
-func (p *Presentation) infoLineFunc(info SpotInfo) int {
-	line := info.Lori()
-	if info.IsIndex() {
-		index, _ := p.Corpus.searchIndex.Get()
-		if index != nil {
-			line = index.(*Index).Snippet(line).Line
-		} else {
-			// no line information available because
-			// we don't have an index - this should
-			// never happen; be conservative and don't
-			// crash
-			line = 0
-		}
-	}
-	return line
-}
-
-func (p *Presentation) infoSnippet_htmlFunc(info SpotInfo) string {
-	if info.IsIndex() {
-		index, _ := p.Corpus.searchIndex.Get()
-		// Snippet.Text was HTML-escaped when it was generated
-		return index.(*Index).Snippet(info.Lori()).Text
-	}
-	return `<span class="alert">no snippet text available</span>`
 }
 
 func (p *Presentation) nodeFunc(info *PageInfo, node interface{}) string {
@@ -301,11 +266,8 @@ func linkedField(line []byte, ids map[string]string) string {
 	// the "Foo Fooer" line, which could otherwise
 	// obscure the docs above the browser's "fold".
 	//
-	// TODO: do this better, so it works for all
-	// comments, including unconventional ones.
-	if bytes.HasPrefix(line, commentPrefix) {
-		line = line[len(commentPrefix):]
-	}
+	line = bytes.TrimPrefix(line, commentPrefix)
+
 	id := scanIdentifier(line)
 	if len(id) == 0 {
 		// No leading identifier. Avoid map lookup for

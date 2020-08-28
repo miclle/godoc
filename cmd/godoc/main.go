@@ -33,14 +33,14 @@ import (
 	"runtime"
 	"strings"
 
+	"golang.org/x/xerrors"
+
 	"github.com/miclle/godoc"
-	"github.com/miclle/godoc/analysis"
 	"github.com/miclle/godoc/static"
 	"github.com/miclle/godoc/vfs"
 	"github.com/miclle/godoc/vfs/gatefs"
 	"github.com/miclle/godoc/vfs/mapfs"
 	"github.com/miclle/godoc/vfs/zipfs"
-	"golang.org/x/xerrors"
 )
 
 const defaultAddr = "localhost:6060" // default webserver address
@@ -49,11 +49,6 @@ var (
 	// file system to serve
 	// (with e.g.: zip -r go.zip $GOROOT -i \*.go -i \*.html -i \*.css -i \*.js -i \*.txt -i \*.c -i \*.h -i \*.s -i \*.png -i \*.jpg -i \*.sh -i favicon.ico)
 	zipfile = flag.String("zip", "", "zip file providing the file system to serve; disabled if empty")
-
-	// file-based index
-	writeIndex = flag.Bool("write_index", false, "write index to a file; the file name must be specified with -index_files")
-
-	analysisFlag = flag.String("analysis", "", `comma-separated list of analyses to perform when in GOPATH mode (supported: type, pointer). See https://golang.org/lib/godoc/analysis/help.html`)
 
 	// network
 	httpAddr = flag.String("http", defaultAddr, "HTTP service address")
@@ -72,13 +67,6 @@ var (
 	templateDir    = flag.String("templates", "", "load templates/JS/CSS from disk in this directory")
 	showPlayground = flag.Bool("play", false, "enable playground")
 	declLinks      = flag.Bool("links", true, "link identifiers to their declarations")
-
-	// search index
-	indexEnabled  = flag.Bool("index", false, "enable search index")
-	indexFiles    = flag.String("index_files", "", "glob pattern specifying index files; if not empty, the index is read from these files in sorted order")
-	indexInterval = flag.Duration("index_interval", 0, "interval of indexing; 0 for default (5m), negative to only index once at startup")
-	maxResults    = flag.Int("maxresults", 10000, "maximum number of full text search results shown")
-	indexThrottle = flag.Float64("index_throttle", 0.75, "index throttle value; 0.0 = no time allocated, 1.0 = full throttle")
 
 	// source code notes
 	notesRx = flag.String("notes", "BUG", "regular expression matching note markers to show")
@@ -160,7 +148,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, `Unexpected arguments. Use "go doc" for command-line help output instead. For example, "go doc fmt.Printf".`)
 		usage()
 	}
-	if *httpAddr == "" && *urlFlag == "" && !*writeIndex {
+	if *httpAddr == "" && *urlFlag == "" {
 		fmt.Fprintln(os.Stderr, "At least one of -http, -url, or -write_index must be set to a non-zero value.")
 		usage()
 	}
@@ -200,12 +188,6 @@ func main() {
 	if goModFile != "" {
 		fmt.Printf("using module mode; GOMOD=%s\n", goModFile)
 
-		if *analysisFlag != "" {
-			fmt.Fprintln(os.Stderr, "The -analysis flag is supported only in GOPATH mode at this time.")
-			fmt.Fprintln(os.Stderr, "See https://golang.org/issue/34473.")
-			usage()
-		}
-
 		// Try to download dependencies that are not in the module cache in order to
 		// to show their documentation.
 		// This may fail if module downloading is disallowed (GOPROXY=off) or due to
@@ -238,20 +220,6 @@ func main() {
 		}
 	}
 
-	var typeAnalysis, pointerAnalysis bool
-	if *analysisFlag != "" {
-		for _, a := range strings.Split(*analysisFlag, ",") {
-			switch a {
-			case "type":
-				typeAnalysis = true
-			case "pointer":
-				pointerAnalysis = true
-			default:
-				log.Fatalf("unknown analysis: %s", a)
-			}
-		}
-	}
-
 	var corpus *godoc.Corpus
 	if goModFile != "" {
 		corpus = godoc.NewCorpus(moduleFS{fs})
@@ -259,20 +227,8 @@ func main() {
 		corpus = godoc.NewCorpus(fs)
 	}
 	corpus.Verbose = *verbose
-	corpus.MaxResults = *maxResults
-	corpus.IndexEnabled = *indexEnabled
-	if *maxResults == 0 {
-		corpus.IndexFullText = false
-	}
-	corpus.IndexFiles = *indexFiles
-	corpus.IndexDirectory = func(dir string) bool {
-		return dir != "/pkg" && !strings.HasPrefix(dir, "/pkg/")
-	}
-	corpus.IndexThrottle = *indexThrottle
-	corpus.IndexInterval = *indexInterval
-	if *writeIndex || *urlFlag != "" {
-		corpus.IndexThrottle = 1.0
-		corpus.IndexEnabled = true
+
+	if *urlFlag != "" {
 		initCorpus(corpus)
 	} else {
 		go initCorpus(corpus)
@@ -293,32 +249,6 @@ func main() {
 	readTemplates(pres)
 	registerHandlers(pres)
 
-	if *writeIndex {
-		// Write search index and exit.
-		if *indexFiles == "" {
-			log.Fatal("no index file specified")
-		}
-
-		log.Println("initialize file systems")
-		*verbose = true // want to see what happens
-
-		corpus.UpdateIndex()
-
-		log.Println("writing index file", *indexFiles)
-		f, err := os.Create(*indexFiles)
-		if err != nil {
-			log.Fatal(err)
-		}
-		index, _ := corpus.CurrentIndex()
-		_, err = index.WriteTo(f)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		log.Println("done")
-		return
-	}
-
 	// Print content that would be served at the URL *urlFlag.
 	if *urlFlag != "" {
 		handleURLFlag()
@@ -331,26 +261,9 @@ func main() {
 		log.Printf("version = %s", runtime.Version())
 		log.Printf("address = %s", *httpAddr)
 		log.Printf("goroot = %s", *goroot)
-		switch {
-		case !*indexEnabled:
-			log.Print("search index disabled")
-		case *maxResults > 0:
-			log.Printf("full text index enabled (maxresults = %d)", *maxResults)
-		default:
-			log.Print("identifier search index enabled")
-		}
+
 		fs.Fprint(os.Stderr)
 		handler = loggingHandler(handler)
-	}
-
-	// Initialize search index.
-	if *indexEnabled {
-		go corpus.RunIndexer()
-	}
-
-	// Start type/pointer analysis.
-	if typeAnalysis || pointerAnalysis {
-		go analysis.Run(pointerAnalysis, &corpus.Analysis)
 	}
 
 	// Start http server.

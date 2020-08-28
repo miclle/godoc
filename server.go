@@ -223,28 +223,6 @@ func (h *handlerServer) GetPageInfo(abspath, relpath string, mode PageInfoMode, 
 	return info
 }
 
-func (h *handlerServer) includePath(path string, mode PageInfoMode) (r bool) {
-	// if the path is under one of the exclusion paths, don't list.
-	for _, e := range h.exclude {
-		if strings.HasPrefix(path, e) {
-			return false
-		}
-	}
-
-	// if the path includes 'internal', don't list unless we are in the NoFiltering mode.
-	if mode&NoFiltering != 0 {
-		return true
-	}
-	if strings.Contains(path, "internal") || strings.Contains(path, "vendor") {
-		for _, c := range strings.Split(filepath.Clean(path), string(os.PathSeparator)) {
-			if c == "internal" || c == "vendor" {
-				return false
-			}
-		}
-	}
-	return true
-}
-
 type funcsByName []*doc.Func
 
 func (s funcsByName) Len() int           { return len(s) }
@@ -259,7 +237,7 @@ func (h *handlerServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	relpath := pathpkg.Clean(r.URL.Path[len(h.stripPrefix)+1:])
 
 	if !h.corpusInitialized() {
-		h.p.ServeError(w, r, relpath, errors.New("Scan is not yet complete. Please retry after a few moments"))
+		h.p.ServeError(w, r, relpath, errors.New("scan is not yet complete. Please retry after a few moments"))
 		return
 	}
 

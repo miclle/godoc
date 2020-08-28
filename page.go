@@ -21,7 +21,6 @@ type Page struct {
 	TreeView bool // page needs to contain treeview related js and css
 
 	// filled in by ServePage
-	SearchBox       bool
 	Playground      bool
 	Version         string
 	GoogleAnalytics string
@@ -31,7 +30,6 @@ func (p *Presentation) ServePage(w http.ResponseWriter, page Page) {
 	if page.Tabtitle == "" {
 		page.Tabtitle = page.Title
 	}
-	page.SearchBox = p.Corpus.IndexEnabled
 	page.Playground = p.ShowPlayground
 	page.Version = runtime.Version()
 	page.GoogleAnalytics = p.GoogleAnalytics
