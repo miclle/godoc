@@ -50,7 +50,7 @@ func (h *handlerServer) registerWithMux(mux *http.ServeMux) {
 // computed (PageInfo.PAst), otherwise package documentation (PageInfo.Doc)
 // is extracted from the AST. If there is no corresponding package in the
 // directory, PageInfo.PAst and PageInfo.DocPackage are nil. If there are no sub-
-// directories, PageInfo.DirectoryList is nil. If an error occurred, PageInfo.Err is
+// directories, PageInfo.Directory is nil. If an error occurred, PageInfo.Err is
 // set to the respective error but the error is not logged.
 //
 func (h *handlerServer) GetPageInfo(abspath, relpath string, mode PageInfoMode, goos, goarch string) *PageInfo {
@@ -145,7 +145,9 @@ func (h *handlerServer) GetPageInfo(abspath, relpath string, mode PageInfoMode, 
 			if mode&AllMethods != 0 {
 				m |= doc.AllMethods
 			}
-			info.DocPackage = doc.New(pkg, pathpkg.Clean(relpath), m) // no trailing '/' in importpath
+
+			importPath := pathpkg.Clean(relpath) // no trailing '/' in importpath
+			info.DocPackage = doc.New(pkg, importPath, m)
 			if mode&NoTypeAssoc != 0 {
 				for _, t := range info.DocPackage.Types {
 					info.DocPackage.Consts = append(info.DocPackage.Consts, t.Consts...)
@@ -214,8 +216,6 @@ func (h *handlerServer) GetPageInfo(abspath, relpath string, mode PageInfoMode, 
 		info.Directory = h.c.newDirectory(abspath, 2)
 		timestamp = time.Now()
 	}
-
-	info.DirectoryList = info.Directory.listing(true, func(path string) bool { return h.includePath(path, mode) })
 
 	info.DirectoryTime = timestamp
 	info.DirectoryFlat = mode&FlatDir != 0

@@ -28,7 +28,7 @@
 				<dd><a href="#pkg-examples" class="examplesLink">Examples</a></dd>
 			{{end}}
 
-			{{if $.DirectoryList}}
+			{{if $.Directory}}
 				<dd><a href="#pkg-subdirectories">Subdirectories</a></dd>
 			{{end}}
 			</dl>
@@ -117,40 +117,19 @@
 
 		{{if ne $.CallGraph "null"}}
 		<div id="pkg-callgraph" class="toggle" style="display: none">
-		<div class="collapsed">
-			<h2 class="toggleButton" title="Click to show Internal Call Graph section">Internal call graph ▹</h2>
-		</div> <!-- .expanded -->
-		<div class="expanded">
-			<h2 class="toggleButton" title="Click to hide Internal Call Graph section">Internal call graph ▾</h2>
-			<p>
-			  In the call graph viewer below, each node
-			  is a function belonging to this package
-			  and its children are the functions it
-			  calls&mdash;perhaps dynamically.
-			</p>
-			<p>
-			  The root nodes are the entry points of the
-			  package: functions that may be called from
-			  outside the package.
-			  There may be non-exported or anonymous
-			  functions among them if they are called
-			  dynamically from another package.
-			</p>
-			<p>
-			  Click a node to visit that function's source code.
-			  From there you can visit its callers by
-			  clicking its declaring <code>func</code>
-			  token.
-			</p>
-			<p>
-			  Functions may be omitted if they were
-			  determined to be unreachable in the
-			  particular programs or tests that were
-			  analyzed.
-			</p>
-			<!-- Zero means show all package entry points. -->
-			<ul style="margin-left: 0.5in" id="callgraph-0" class="treeview"></ul>
-		</div>
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Internal Call Graph section">Internal call graph ▹</h2>
+			</div> <!-- .expanded -->
+
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Internal Call Graph section">Internal call graph ▾</h2>
+				<p>In the call graph viewer below, each node is a function belonging to this package and its children are the functions it calls&mdash;perhaps dynamically.</p>
+				<p>The root nodes are the entry points of the package: functions that may be called from outside the package. There may be non-exported or anonymous functions among them if they are called dynamically from another package.</p>
+				<p>Click a node to visit that function's source code. From there you can visit its callers by clicking its declaring <code>func</code> token.</p>
+				<p>Functions may be omitted if they were determined to be unreachable in the particular programs or tests that were analyzed.</p>
+				<!-- Zero means show all package entry points. -->
+				<ul style="margin-left: 0.5in" id="callgraph-0" class="treeview"></ul>
+			</div>
 		</div> <!-- #pkg-callgraph -->
 		{{end}}
 
@@ -190,6 +169,7 @@
 				{{$since := since "type" "" .Name $.DocPackage.ImportPath}}
 				{{if $since}}<span title="Added in Go {{$since}}">{{$since}}</span>{{end}}
 			</h2>
+
 			{{comment_html .Doc}}
 			<pre>{{node_html $ .Decl true}}</pre>
 
@@ -248,49 +228,45 @@
 	{{end}}
 {{end}}
 
+
 {{with .PAst}}
 	{{range $filename, $ast := .}}
 		<a href="{{$filename|srcLink|html}}">{{$filename|filename|html}}</a>:<pre>{{node_html $ $ast false}}</pre>
 	{{end}}
 {{end}}
 
-{{with .DirectoryList}}
-	{{/* DirList entries are numbers and strings - no need for FSet */}}
+
+{{/* Nested render directory */}}
+{{- define "item" -}}
+{{- range . }}
+	<tr>
+		<td>
+			<a href="/pkg/{{.ImportPath}}">{{html .Path}}</a>
+		</td>
+		<td>{{html .Synopsis}}</td>
+
+		{{- if gt (len .SubDirectories) 0 }}
+		{{template "item" .SubDirectories}}
+		{{- end}}
+	</tr>
+{{- end -}}
+{{- end -}}
+
+{{with .Directory}}
 	{{if $.DocPackage}}
 		<h2 id="pkg-subdirectories">Subdirectories</h2>
 	{{end}}
-	<div class="pkg-dir">
-		<table>
-			<tr>
-				<th class="pkg-name">Name</th>
-				<th class="pkg-synopsis">Synopsis</th>
-			</tr>
 
-			{{if not (or (eq $.Dirname "/src/cmd") $.DirectoryFlat)}}
-			<tr>
-				<td colspan="2"><a href="..">..</a></td>
-			</tr>
-			{{end}}
-
-			{{range .List}}
-				<tr>
-				{{if $.DirectoryFlat}}
-					{{if .HasPkg}}
-						<td class="pkg-name">
-							<a href="{{html .Path}}/{{modeQueryString $.Mode | html}}">{{html .Path}}</a>
-						</td>
-					{{end}}
-				{{else}}
-					<td class="pkg-name" style="padding-left: {{multiply .Depth 20}}px;">
-						<a href="{{html .Path}}/{{modeQueryString $.Mode | html}}">{{html .Name}}</a>
-					</td>
-				{{end}}
-					<td class="pkg-synopsis">
-						{{html .Synopsis}}
-					</td>
-				</tr>
-			{{end}}
-		</table>
-	</div>
+	<table class="table table-bordered table-hover">
+		<tr>
+			<th class="pkg-name">Package</th>
+			<th class="pkg-synopsis">Synopsis</th>
+		</tr>
+		<tr>
+			<td><a href="..">..</a></td>
+			<td></td>
+		</tr>
+		{{template "item" .SubDirectories}}
+	</table>
 {{end}}
 <!-- end package.html -->

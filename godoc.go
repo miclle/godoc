@@ -105,9 +105,6 @@ func (p *Presentation) initFuncMap() {
 
 		// formatting of PageInfoMode query string
 		"modeQueryString": modeQueryString,
-
-		// check whether to display third party section or not
-		"hasThirdParty": hasThirdParty,
 	}
 	if p.URLForSrc != nil {
 		p.funcMap["srcLink"] = p.URLForSrc
@@ -416,13 +413,12 @@ type PageInfo struct {
 
 	// directory info
 	Directory     *Directory
-	DirectoryList *DirectoryList // nil if no directory information
-	DirectoryTime time.Time      // directory time stamp
-	DirectoryFlat bool           // if set, show directory in a flat (non-indented) manner
+	DirectoryTime time.Time // directory time stamp
+	DirectoryFlat bool      // if set, show directory in a flat (non-indented) manner
 }
 
 func (info *PageInfo) IsEmpty() bool {
-	return info.Err != nil || info.PAst == nil && info.DocPackage == nil && info.DirectoryList == nil
+	return info.Err != nil || info.PAst == nil && info.DocPackage == nil && info.Directory == nil
 }
 
 func pkgLinkFunc(path string) string {

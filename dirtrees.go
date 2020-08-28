@@ -21,13 +21,15 @@ import (
 //
 const testdataDirName = "testdata"
 
+// Directory information
 type Directory struct {
-	Depth            int
-	Path             string       // directory path; includes Name
-	Name             string       // directory name
-	HasPkg           bool         // true if the directory contains at least one package
-	Synopsis         string       // package documentation, if any
-	RootType         vfs.RootType // root type of the filesystem containing the directory
+	Depth          int
+	Path           string       // directory path; includes Name
+	Name           string       // directory name
+	ImportPath     string       // import path
+	HasPkg         bool         // true if the directory contains at least one package
+	Synopsis       string       // package documentation, if any
+	RootType       vfs.RootType // root type of the filesystem containing the directory, GOPATH: hasThirdParty, GOROOT: standard library
 	SubDirectories []*Directory // subdirectories
 }
 
@@ -69,14 +71,17 @@ func (b *treeBuilder) newDirTree(fset *token.FileSet, path, name string, depth i
 		return nil
 	}
 
+	importPath := pathpkg.Clean(strings.TrimPrefix(path, "/src/"))
+
 	if depth >= b.maxDepth {
 		// return a dummy directory so that the parent directory
 		// doesn't get discarded just because we reached the max
 		// directory depth
 		return &Directory{
-			Depth: depth,
-			Path:  path,
-			Name:  name,
+			Depth:      depth,
+			Path:       path,
+			Name:       name,
+			ImportPath: importPath,
 		}
 	}
 
@@ -194,12 +199,13 @@ func (b *treeBuilder) newDirTree(fset *token.FileSet, path, name string, depth i
 	}
 
 	return &Directory{
-		Depth:            depth,
-		Path:             path,
-		Name:             name,
-		HasPkg:           hasPkgFiles && show, // TODO(bradfitz): add proper Hide field?
-		Synopsis:         synopsis,
-		RootType:         b.c.fs.RootType(path),
+		Depth:          depth,
+		Path:           path,
+		Name:           name,
+		ImportPath:     importPath,
+		HasPkg:         hasPkgFiles && show, // TODO(bradfitz): add proper Hide field?
+		Synopsis:       synopsis,
+		RootType:       b.c.fs.RootType(path),
 		SubDirectories: directories,
 	}
 }
@@ -292,88 +298,4 @@ func (directory *Directory) lookup(path string) *Directory {
 		i++
 	}
 	return directory
-}
-
-// DirectoryEntry describes a directory entry. The Depth and Height values
-// are useful for presenting an entry in an indented fashion.
-//
-type DirectoryEntry struct {
-	Depth    int          // >= 0
-	Height   int          // = DirList.MaxHeight - Depth, > 0
-	Path     string       // directory path; includes Name, relative to DirList root
-	Name     string       // directory name
-	HasPkg   bool         // true if the directory contains at least one package
-	Synopsis string       // package documentation, if any
-	RootType vfs.RootType // root type of the filesystem containing the direntry
-}
-
-type DirectoryList struct {
-	MaxHeight int // directory tree height, > 0
-	List      []DirectoryEntry
-}
-
-// hasThirdParty checks whether a list of directory entries has packages outside
-// the standard library or not.
-func hasThirdParty(list []DirectoryEntry) bool {
-	for _, entry := range list {
-		if entry.RootType == vfs.RootTypeGoPath {
-			return true
-		}
-	}
-	return false
-}
-
-// listing creates a (linear) directory listing from a directory tree.
-// If skipRoot is set, the root directory itself is excluded from the list.
-// If filter is set, only the directory entries whose paths match the filter
-// are included.
-//
-func (directory *Directory) listing(skipRoot bool, filter func(string) bool) *DirectoryList {
-	if directory == nil {
-		return nil
-	}
-
-	// determine number of entries n and maximum height
-	n := 0
-	minDepth := 1 << 30 // infinity
-	maxDepth := 0
-	for d := range directory.iter(skipRoot) {
-		n++
-		if minDepth > d.Depth {
-			minDepth = d.Depth
-		}
-		if maxDepth < d.Depth {
-			maxDepth = d.Depth
-		}
-	}
-	maxHeight := maxDepth - minDepth + 1
-
-	if n == 0 {
-		return nil
-	}
-
-	// create list
-	list := make([]DirectoryEntry, 0, n)
-	for d := range directory.iter(skipRoot) {
-		if filter != nil && !filter(d.Path) {
-			continue
-		}
-		var p DirectoryEntry
-		p.Depth = d.Depth - minDepth
-		p.Height = maxHeight - p.Depth
-		// the path is relative to root.Path - remove the root.Path
-		// prefix (the prefix should always be present but avoid
-		// crashes and check)
-		path := strings.TrimPrefix(d.Path, directory.Path)
-		// remove leading separator if any - path must be relative
-		path = strings.TrimPrefix(path, "/")
-		p.Path = path
-		p.Name = d.Name
-		p.HasPkg = d.HasPkg
-		p.Synopsis = d.Synopsis
-		p.RootType = d.RootType
-		list = append(list, p)
-	}
-
-	return &DirectoryList{maxHeight, list}
 }

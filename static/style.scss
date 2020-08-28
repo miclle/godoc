@@ -790,12 +790,12 @@ a.error {
 #sidebar {
 	width: 330px;
 	padding: 0;
-	border-right: 1px solid #e0e7e8;
 
 	.sphinxsidebar {
 		width: 330px;
 		font-size: 16px;
 		line-height: 20px;
+		border-right: 1px solid #e0e7e8;
 		top: 56px;
 		bottom: 0;
 		position: fixed;
@@ -829,4 +829,8 @@ a.error {
 		position: relative;
 		color: #222;
 	}
+}
+
+#main-column {
+	overflow-x: auto;
 }
