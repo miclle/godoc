@@ -66,10 +66,6 @@ type Presentation struct {
 	// the query string highlighted.
 	URLForSrcQuery func(src, query string, line int) string
 
-	// GoogleAnalytics optionally adds Google Analytics via the provided
-	// tracking ID to each page.
-	GoogleAnalytics string
-
 	initFuncMapOnce sync.Once
 	funcMap         template.FuncMap
 	templateFuncs   template.FuncMap

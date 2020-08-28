@@ -19,9 +19,8 @@ type Page struct {
 	Body    []byte // Main content
 
 	// filled in by ServePage
-	Playground      bool
-	Version         string
-	GoogleAnalytics string
+	Playground bool
+	Version    string
 }
 
 func (p *Presentation) ServePage(w http.ResponseWriter, page Page) {
@@ -30,7 +29,6 @@ func (p *Presentation) ServePage(w http.ResponseWriter, page Page) {
 	}
 	page.Playground = p.ShowPlayground
 	page.Version = runtime.Version()
-	page.GoogleAnalytics = p.GoogleAnalytics
 
 	// render page with layout
 	applyTemplateToResponseWriter(w, p.LayoutHTML, page)
@@ -47,9 +45,8 @@ func (p *Presentation) ServeError(w http.ResponseWriter, r *http.Request, relpat
 		}
 	}
 	p.ServePage(w, Page{
-		Title:           "File " + relpath,
-		Subtitle:        relpath,
-		Body:            applyTemplate(p.ErrorHTML, "errorHTML", err),
-		GoogleAnalytics: p.GoogleAnalytics,
+		Title:    "File " + relpath,
+		Subtitle: relpath,
+		Body:     applyTemplate(p.ErrorHTML, "errorHTML", err),
 	})
 }
