@@ -6,7 +6,7 @@
 		<li>
 			<a
 				class="package"
-				href="{{html .Path}}"
+				href="/pkg/{{srcID .Path}}"
 
 				{{- if gt (len .SubDirectories) 0 }}
 				data-toggle="collapse" data-target="#path{{srcID .Path}}" aria-controls="path{{srcID .Path}}"

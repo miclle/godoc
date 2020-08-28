@@ -542,6 +542,7 @@ func srcLinkFunc(s string) string {
 
 // conversion / to -
 func srcIDFunc(s string) string {
+	s = strings.TrimPrefix(s, "/src/")
 	s = strings.ReplaceAll(s, "/", "-")
 	s = strings.ReplaceAll(s, ".", "-")
 	return s

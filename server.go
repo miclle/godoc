@@ -326,10 +326,18 @@ func (h *handlerServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		info.TypeInfoIndex[ti.Name] = i
 	}
 
+	// set sidebar info
+	// ------------------------------------------------------------------
 	var sidebar, body []byte
 
-	// TODO: package page info.DirectoryList if empty
-	sidebar = applyTemplate(h.p.SidebarHTML, "sidebarHTML", info)
+	packages := h.GetPageInfo("/src", "", 2, "", "")
+	if packages.Err != nil {
+		log.Fatal(packages.Err)
+		return
+	}
+
+	sidebar = applyTemplate(h.p.SidebarHTML, "sidebarHTML", packages)
+	// ------------------------------------------------------------------
 
 	if info.Dirname == "/src" {
 		body = applyTemplate(h.p.PackageRootHTML, "packageRootHTML", info)
