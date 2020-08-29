@@ -29,12 +29,12 @@ import (
 // handlerServer is a migration from an old godoc http Handler type.
 // This should probably merge into something else.
 type handlerServer struct {
-	p           *Presentation
-	c           *Corpus  // copy of p.Corpus
-	pattern     string   // url pattern; e.g. "/pkg/"
-	stripPrefix string   // prefix to strip from import path; e.g. "pkg/"
-	fsRoot      string   // file system root to which the pattern is mapped; e.g. "/src"
-	exclude     []string // file system paths to exclude; e.g. "/src/cmd"
+	presentation *Presentation
+	corpus       *Corpus  // copy of p.Corpus
+	pattern      string   // url pattern; e.g. "/pkg/"
+	stripPrefix  string   // prefix to strip from import path; e.g. "pkg/"
+	fsRoot       string   // file system root to which the pattern is mapped; e.g. "/src"
+	exclude      []string // file system paths to exclude; e.g. "/src/cmd"
 }
 
 func (handler *handlerServer) registerWithMux(mux *http.ServeMux) {
@@ -65,11 +65,11 @@ func (handler *handlerServer) GetPageInfo(abspath, relpath string, mode PageInfo
 	ctxt := build.Default
 	ctxt.IsAbsPath = path.IsAbs
 	ctxt.IsDir = func(path string) bool {
-		fi, err := handler.c.fs.Stat(filepath.ToSlash(path))
+		fi, err := handler.corpus.fs.Stat(filepath.ToSlash(path))
 		return err == nil && fi.IsDir()
 	}
 	ctxt.ReadDir = func(dir string) ([]os.FileInfo, error) {
-		f, err := handler.c.fs.ReadDir(filepath.ToSlash(dir))
+		f, err := handler.corpus.fs.ReadDir(filepath.ToSlash(dir))
 		filtered := make([]os.FileInfo, 0, len(f))
 		for _, i := range f {
 			if mode&NoFiltering != 0 || i.Name() != "internal" {
@@ -79,7 +79,7 @@ func (handler *handlerServer) GetPageInfo(abspath, relpath string, mode PageInfo
 		return filtered, err
 	}
 	ctxt.OpenFile = func(name string) (r io.ReadCloser, err error) {
-		data, err := vfs.ReadFile(handler.c.fs, filepath.ToSlash(name))
+		data, err := vfs.ReadFile(handler.corpus.fs, filepath.ToSlash(name))
 		if err != nil {
 			return nil, err
 		}
@@ -125,7 +125,7 @@ func (handler *handlerServer) GetPageInfo(abspath, relpath string, mode PageInfo
 	if len(pkgfiles) > 0 {
 		// build package AST
 		fset := token.NewFileSet()
-		files, err := handler.c.parseFiles(fset, relpath, abspath, pkgfiles)
+		files, err := handler.corpus.parseFiles(fset, relpath, abspath, pkgfiles)
 		if err != nil {
 			pageInfo.Err = err
 			return pageInfo
@@ -164,16 +164,16 @@ func (handler *handlerServer) GetPageInfo(abspath, relpath string, mode PageInfo
 
 			// collect examples
 			testfiles := append(pkginfo.TestGoFiles, pkginfo.XTestGoFiles...)
-			files, err = handler.c.parseFiles(fset, relpath, abspath, testfiles)
+			files, err = handler.corpus.parseFiles(fset, relpath, abspath, testfiles)
 			if err != nil {
 				log.Println("parsing examples:", err)
 			}
-			pageInfo.Examples = collectExamples(handler.c, pkg, files)
+			pageInfo.Examples = collectExamples(handler.corpus, pkg, files)
 
 			// collect any notes that we want to show
 			if pageInfo.DocPackage.Notes != nil {
 				// could regexp.Compile only once per godoc, but probably not worth it
-				if rx := handler.p.NotesRx; rx != nil {
+				if rx := handler.presentation.NotesRx; rx != nil {
 					for m, n := range pageInfo.DocPackage.Notes {
 						if rx.MatchString(m) {
 							if pageInfo.Notes == nil {
@@ -194,10 +194,11 @@ func (handler *handlerServer) GetPageInfo(abspath, relpath string, mode PageInfo
 			}
 			pageInfo.PAst = files
 		}
+
 		pageInfo.IsMain = pkgname == "main"
 	}
 
-	directory, timestamp := handler.c.Directory(abspath)
+	directory, timestamp := handler.corpus.Directory(abspath)
 
 	pageInfo.Directory = directory
 	pageInfo.DirectoryTime = timestamp
@@ -220,12 +221,12 @@ func (handler *handlerServer) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	relpath := path.Clean(r.URL.Path[len(handler.stripPrefix)+1:])
 
 	if !handler.corpusInitialized() {
-		handler.p.ServeError(w, r, relpath, errors.New("scan is not yet complete. Please retry after a few moments"))
+		handler.presentation.ServeError(w, r, relpath, errors.New("scan is not yet complete. Please retry after a few moments"))
 		return
 	}
 
 	abspath := path.Join(handler.fsRoot, relpath)
-	mode := handler.p.GetPageInfoMode(r)
+	mode := handler.presentation.GetPageInfoMode(r)
 	if relpath == builtinPkgPath {
 		// The fake built-in package contains unexported identifiers,
 		// but we want to show them. Also, disable type association,
@@ -235,7 +236,7 @@ func (handler *handlerServer) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	pageInfo := handler.GetPageInfo(abspath, relpath, mode, r.FormValue("GOOS"), r.FormValue("GOARCH"))
 	if pageInfo.Err != nil {
 		log.Print(pageInfo.Err)
-		handler.p.ServeError(w, r, relpath, pageInfo.Err)
+		handler.presentation.ServeError(w, r, relpath, pageInfo.Err)
 		return
 	}
 
@@ -251,7 +252,7 @@ func (handler *handlerServer) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	default:
 		tabtitle = pageInfo.Dirname
 		title = "Directory "
-		if handler.p.ShowTimestamps {
+		if handler.presentation.ShowTimestamps {
 			subtitle = "Last update: " + pageInfo.DirectoryTime.String()
 		}
 	}
@@ -285,23 +286,23 @@ func (handler *handlerServer) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 
 	// set sidebar info
 	// ------------------------------------------------------------------
-	page.Directory, _ = handler.c.Directory("/src")
-	page.Sidebar = applyTemplate(handler.p.SidebarHTML, "sidebarHTML", page)
+	page.Directory, _ = handler.corpus.Directory("/src")
+	page.Sidebar = applyTemplate(handler.presentation.SidebarHTML, "sidebarHTML", page)
 	// ------------------------------------------------------------------
 
 	if pageInfo.Dirname == "/src" {
-		page.Body = applyTemplate(handler.p.PackageRootHTML, "packageRootHTML", pageInfo)
+		page.Body = applyTemplate(handler.presentation.PackageRootHTML, "packageRootHTML", pageInfo)
 	} else {
-		page.Body = applyTemplate(handler.p.PackageHTML, "packageHTML", pageInfo)
+		page.Body = applyTemplate(handler.presentation.PackageHTML, "packageHTML", pageInfo)
 	}
 
-	handler.p.ServePage(w, page)
+	handler.presentation.ServePage(w, page)
 }
 
 func (handler *handlerServer) corpusInitialized() bool {
-	handler.c.initMu.RLock()
-	defer handler.c.initMu.RUnlock()
-	return handler.c.initDone
+	handler.corpus.initMu.RLock()
+	defer handler.corpus.initMu.RUnlock()
+	return handler.corpus.initDone
 }
 
 type PageInfoMode uint

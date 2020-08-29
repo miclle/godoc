@@ -3,6 +3,7 @@
 package godoc
 
 import (
+	"fmt"
 	"go/doc"
 	"go/parser"
 	"go/token"
@@ -23,6 +24,7 @@ const testdataDirName = "testdata"
 
 // Directory information
 type Directory struct {
+	Dir            string
 	Depth          int
 	Path           string       // directory path; includes Name
 	Name           string       // directory name
@@ -51,8 +53,9 @@ func isPkgDir(fi os.FileInfo) bool {
 		name[0] != '_' && name[0] != '.' // ignore _files and .files
 }
 
-type treeBuilder struct {
-	c        *Corpus
+// TreeBuilder directory tree builder
+type TreeBuilder struct {
+	corpus   *Corpus
 	maxDepth int
 }
 
@@ -66,18 +69,19 @@ var ioGate = make(chan struct{}, 20)
 // instead of spinning up another goroutine.
 var workGate = make(chan struct{}, runtime.NumCPU()*4)
 
-func (b *treeBuilder) newDirTree(fset *token.FileSet, path, name string, depth int) *Directory {
+func (builder *TreeBuilder) newDirTree(fset *token.FileSet, path, name string, depth int) *Directory {
 	if name == testdataDirName {
 		return nil
 	}
 
 	importPath := pathpkg.Clean(strings.TrimPrefix(path, "/src/"))
 
-	if depth >= b.maxDepth {
+	if depth >= builder.maxDepth {
 		// return a dummy directory so that the parent directory
 		// doesn't get discarded just because we reached the max
 		// directory depth
 		return &Directory{
+			Dir:        path,
 			Depth:      depth,
 			Path:       path,
 			Name:       name,
@@ -91,7 +95,7 @@ func (b *treeBuilder) newDirTree(fset *token.FileSet, path, name string, depth i
 	hasPkgFiles := false
 	haveSummary := false
 
-	if hook := b.c.SummarizePackage; hook != nil {
+	if hook := builder.corpus.SummarizePackage; hook != nil {
 		if summary, show0, ok := hook(strings.TrimPrefix(path, "/src/")); ok {
 			hasPkgFiles = true
 			show = show0
@@ -101,12 +105,12 @@ func (b *treeBuilder) newDirTree(fset *token.FileSet, path, name string, depth i
 	}
 
 	ioGate <- struct{}{}
-	list, err := b.c.fs.ReadDir(path)
+	list, err := builder.corpus.fs.ReadDir(path)
 	<-ioGate
 	if err != nil {
 		// TODO: propagate more. See golang.org/issue/14252.
 		// For now:
-		if b.c.Verbose {
+		if builder.corpus.Verbose {
 			log.Printf("newDirTree reading %s: %v", path, err)
 		}
 	}
@@ -125,12 +129,12 @@ func (b *treeBuilder) newDirTree(fset *token.FileSet, path, name string, depth i
 				ch := make(chan *Directory, 1)
 				dirchs = append(dirchs, ch)
 				go func() {
-					ch <- b.newDirTree(fset, filename, name, depth+1)
+					ch <- builder.newDirTree(fset, filename, name, depth+1)
 					<-workGate
 				}()
 			default:
 				// no free workers, do work synchronously
-				dir := b.newDirTree(fset, filename, name, depth+1)
+				dir := builder.newDirTree(fset, filename, name, depth+1)
 				if dir != nil {
 					directories = append(directories, dir)
 				}
@@ -142,10 +146,10 @@ func (b *treeBuilder) newDirTree(fset *token.FileSet, path, name string, depth i
 			// no "optimal" package synopsis yet; continue to collect synopses
 			ioGate <- struct{}{}
 			const flags = parser.ParseComments | parser.PackageClauseOnly
-			file, err := b.c.parseFile(fset, filename, flags)
+			file, err := builder.corpus.parseFile(fset, filename, flags)
 			<-ioGate
 			if err != nil {
-				if b.c.Verbose {
+				if builder.corpus.Verbose {
 					log.Printf("Error parsing %v: %v", filename, err)
 				}
 				break
@@ -198,14 +202,18 @@ func (b *treeBuilder) newDirTree(fset *token.FileSet, path, name string, depth i
 		}
 	}
 
+	// importPath := path.Clean(relpath) // no trailing '/' in importpath
+	// pageInfo.DocPackage = doc.New(pkg, importPath, m)
+
 	return &Directory{
+		Dir:            path,
 		Depth:          depth,
 		Path:           path,
 		Name:           name,
 		ImportPath:     importPath,
 		HasPkg:         hasPkgFiles && show, // TODO(bradfitz): add proper Hide field?
 		Synopsis:       synopsis,
-		RootType:       b.c.fs.RootType(path),
+		RootType:       builder.corpus.fs.RootType(path),
 		SubDirectories: directories,
 	}
 }
@@ -239,10 +247,15 @@ func (c *Corpus) newDirectory(root string, maxDepth int) *Directory {
 	if maxDepth < 0 {
 		maxDepth = 1e6 // "infinity"
 	}
-	b := treeBuilder{c, maxDepth}
+
+	treeBuilder := TreeBuilder{
+		corpus:   c,
+		maxDepth: maxDepth,
+	}
+
 	// the file set provided is only for local parsing, no position
 	// information escapes and thus we don't need to save the set
-	return b.newDirTree(token.NewFileSet(), root, d.Name(), 0)
+	return treeBuilder.newDirTree(token.NewFileSet(), root, d.Name(), 0)
 }
 
 func (directory *Directory) lookupLocal(name string) *Directory {

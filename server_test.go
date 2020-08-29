@@ -18,10 +18,10 @@ func TestIgnoredGoFiles(t *testing.T) {
 // ` + packageComment + `
 package main`}))
 	srv := &handlerServer{
-		p: &Presentation{
+		presentation: &Presentation{
 			Corpus: c,
 		},
-		c: c,
+		corpus: c,
 	}
 	pInfo := srv.GetPageInfo("/src/"+packagePath, packagePath, NoFiltering, "linux", "amd64")
 
@@ -55,8 +55,8 @@ func F()
 //line foo.go:100`})) // No newline at end to check corner cases.
 
 	srv := &handlerServer{
-		p: &Presentation{Corpus: c},
-		c: c,
+		presentation: &Presentation{Corpus: c},
+		corpus:       c,
 	}
 	pInfo := srv.GetPageInfo("/src/"+packagePath, packagePath, 0, "linux", "amd64")
 	if got, want := pInfo.DocPackage.Funcs[0].Doc, "F doc //line 1 should appear\nline 2 should appear\n"; got != want {
