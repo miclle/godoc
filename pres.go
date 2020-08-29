@@ -2,12 +2,31 @@ package godoc
 
 import (
 	"net/http"
+	"os"
+	"path/filepath"
 	"regexp"
+	"runtime"
 	"sync"
 	"text/template"
 
 	"github.com/miclle/godoc/vfs/httpfs"
 )
+
+// Page describes the contents of the top-level godoc webpage.
+type Page struct {
+	Title    string
+	Tabtitle string
+	Subtitle string
+	SrcPath  string
+	Query    string
+
+	Sidebar []byte // Sidebar content
+	Body    []byte // Main content
+
+	// filled in by ServePage
+	Playground bool
+	Version    string
+}
 
 // Presentation generates output from a corpus.
 type Presentation struct {
@@ -120,6 +139,34 @@ func (p *Presentation) PkgFSRoot() string {
 
 func (p *Presentation) CmdFSRoot() string {
 	return p.cmdHandler.fsRoot
+}
+
+func (p *Presentation) ServePage(w http.ResponseWriter, page Page) {
+	if page.Tabtitle == "" {
+		page.Tabtitle = page.Title
+	}
+	page.Playground = p.ShowPlayground
+	page.Version = runtime.Version()
+
+	// render page with layout
+	applyTemplateToResponseWriter(w, p.LayoutHTML, page)
+}
+
+func (p *Presentation) ServeError(w http.ResponseWriter, r *http.Request, relpath string, err error) {
+	w.WriteHeader(http.StatusNotFound)
+	if perr, ok := err.(*os.PathError); ok {
+		rel, err := filepath.Rel(runtime.GOROOT(), perr.Path)
+		if err != nil {
+			perr.Path = "REDACTED"
+		} else {
+			perr.Path = filepath.Join("$GOROOT", rel)
+		}
+	}
+	p.ServePage(w, Page{
+		Title:    "File " + relpath,
+		Subtitle: relpath,
+		Body:     applyTemplate(p.ErrorHTML, "errorHTML", err),
+	})
 }
 
 // TODO(bradfitz): move this to be a method on Corpus. Just moving code around for now,

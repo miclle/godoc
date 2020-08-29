@@ -55,25 +55,6 @@ func init() {
 	}
 }
 
-// makeSpotInfo makes a SpotInfo.
-func makeSpotInfo(kind SpotKind, lori int, isIndex bool) SpotInfo {
-	// encode lori: bits [4..32)
-	x := SpotInfo(lori) << 4
-	if int(x>>4) != lori {
-		// lori value doesn't fit - since snippet indices are
-		// most certainly always smaller then 1<<28, this can
-		// only happen for line numbers; give it no line number (= 0)
-		x = 0
-	}
-	// encode kind: bits [1..4)
-	x |= SpotInfo(kind) << 1
-	// encode isIndex: bit 0
-	if isIndex {
-		x |= 1
-	}
-	return x
-}
-
 func (x SpotInfo) Kind() SpotKind { return SpotKind(x >> 1 & 7) }
 func (x SpotInfo) Lori() int      { return int(x >> 4) }
 func (x SpotInfo) IsIndex() bool  { return x&1 != 0 }

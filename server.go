@@ -2,7 +2,6 @@ package godoc
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"go/ast"
@@ -10,7 +9,6 @@ import (
 	"go/doc"
 	"go/token"
 	htmlpkg "html"
-	// htmltemplate "html/template"
 	"io"
 	"io/ioutil"
 	"log"
@@ -40,8 +38,8 @@ type handlerServer struct {
 	exclude     []string // file system paths to exclude; e.g. "/src/cmd"
 }
 
-func (h *handlerServer) registerWithMux(mux *http.ServeMux) {
-	mux.Handle(h.pattern, h)
+func (handler *handlerServer) registerWithMux(mux *http.ServeMux) {
+	mux.Handle(handler.pattern, handler)
 }
 
 // GetPageInfo returns the PageInfo for a package directory abspath. If the
@@ -52,7 +50,7 @@ func (h *handlerServer) registerWithMux(mux *http.ServeMux) {
 // directories, PageInfo.Directory is nil. If an error occurred, PageInfo.Err is
 // set to the respective error but the error is not logged.
 //
-func (h *handlerServer) GetPageInfo(abspath, relpath string, mode PageInfoMode, goos, goarch string) *PageInfo {
+func (handler *handlerServer) GetPageInfo(abspath, relpath string, mode PageInfoMode, goos, goarch string) *PageInfo {
 	info := &PageInfo{Dirname: abspath, Mode: mode}
 
 	// Restrict to the package files that would be used when building
@@ -64,11 +62,11 @@ func (h *handlerServer) GetPageInfo(abspath, relpath string, mode PageInfoMode, 
 	ctxt := build.Default
 	ctxt.IsAbsPath = pathpkg.IsAbs
 	ctxt.IsDir = func(path string) bool {
-		fi, err := h.c.fs.Stat(filepath.ToSlash(path))
+		fi, err := handler.c.fs.Stat(filepath.ToSlash(path))
 		return err == nil && fi.IsDir()
 	}
 	ctxt.ReadDir = func(dir string) ([]os.FileInfo, error) {
-		f, err := h.c.fs.ReadDir(filepath.ToSlash(dir))
+		f, err := handler.c.fs.ReadDir(filepath.ToSlash(dir))
 		filtered := make([]os.FileInfo, 0, len(f))
 		for _, i := range f {
 			if mode&NoFiltering != 0 || i.Name() != "internal" {
@@ -78,7 +76,7 @@ func (h *handlerServer) GetPageInfo(abspath, relpath string, mode PageInfoMode, 
 		return filtered, err
 	}
 	ctxt.OpenFile = func(name string) (r io.ReadCloser, err error) {
-		data, err := vfs.ReadFile(h.c.fs, filepath.ToSlash(name))
+		data, err := vfs.ReadFile(handler.c.fs, filepath.ToSlash(name))
 		if err != nil {
 			return nil, err
 		}
@@ -124,7 +122,7 @@ func (h *handlerServer) GetPageInfo(abspath, relpath string, mode PageInfoMode, 
 	if len(pkgfiles) > 0 {
 		// build package AST
 		fset := token.NewFileSet()
-		files, err := h.c.parseFiles(fset, relpath, abspath, pkgfiles)
+		files, err := handler.c.parseFiles(fset, relpath, abspath, pkgfiles)
 		if err != nil {
 			info.Err = err
 			return info
@@ -163,16 +161,16 @@ func (h *handlerServer) GetPageInfo(abspath, relpath string, mode PageInfoMode, 
 
 			// collect examples
 			testfiles := append(pkginfo.TestGoFiles, pkginfo.XTestGoFiles...)
-			files, err = h.c.parseFiles(fset, relpath, abspath, testfiles)
+			files, err = handler.c.parseFiles(fset, relpath, abspath, testfiles)
 			if err != nil {
 				log.Println("parsing examples:", err)
 			}
-			info.Examples = collectExamples(h.c, pkg, files)
+			info.Examples = collectExamples(handler.c, pkg, files)
 
 			// collect any notes that we want to show
 			if info.DocPackage.Notes != nil {
 				// could regexp.Compile only once per godoc, but probably not worth it
-				if rx := h.p.NotesRx; rx != nil {
+				if rx := handler.p.NotesRx; rx != nil {
 					for m, n := range info.DocPackage.Notes {
 						if rx.MatchString(m) {
 							if info.Notes == nil {
@@ -198,7 +196,7 @@ func (h *handlerServer) GetPageInfo(abspath, relpath string, mode PageInfoMode, 
 
 	// get directory information, if any
 	var timestamp time.Time
-	if tree, ts := h.c.fsTree.Get(); tree != nil && tree.(*Directory) != nil {
+	if tree, ts := handler.c.fsTree.Get(); tree != nil && tree.(*Directory) != nil {
 		// directory tree is present; lookup respective directory
 		// (may still fail if the file system was updated and the
 		// new directory tree has not yet been computed)
@@ -212,7 +210,7 @@ func (h *handlerServer) GetPageInfo(abspath, relpath string, mode PageInfoMode, 
 		// get the synopses of sub-directories.
 		// note: cannot use path filter here because in general
 		// it doesn't contain the FSTree path
-		info.Directory = h.c.newDirectory(abspath, 2)
+		info.Directory = handler.c.newDirectory(abspath, 2)
 		timestamp = time.Now()
 	}
 
@@ -228,30 +226,30 @@ func (s funcsByName) Len() int           { return len(s) }
 func (s funcsByName) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 func (s funcsByName) Less(i, j int) bool { return s[i].Name < s[j].Name }
 
-func (h *handlerServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (handler *handlerServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if redirect(w, r) {
 		return
 	}
 
-	relpath := pathpkg.Clean(r.URL.Path[len(h.stripPrefix)+1:])
+	relpath := pathpkg.Clean(r.URL.Path[len(handler.stripPrefix)+1:])
 
-	if !h.corpusInitialized() {
-		h.p.ServeError(w, r, relpath, errors.New("scan is not yet complete. Please retry after a few moments"))
+	if !handler.corpusInitialized() {
+		handler.p.ServeError(w, r, relpath, errors.New("scan is not yet complete. Please retry after a few moments"))
 		return
 	}
 
-	abspath := pathpkg.Join(h.fsRoot, relpath)
-	mode := h.p.GetPageInfoMode(r)
+	abspath := pathpkg.Join(handler.fsRoot, relpath)
+	mode := handler.p.GetPageInfoMode(r)
 	if relpath == builtinPkgPath {
 		// The fake built-in package contains unexported identifiers,
 		// but we want to show them. Also, disable type association,
 		// since it's not helpful for this fake package (see issue 6645).
 		mode |= NoFiltering | NoTypeAssoc
 	}
-	pageInfo := h.GetPageInfo(abspath, relpath, mode, r.FormValue("GOOS"), r.FormValue("GOARCH"))
+	pageInfo := handler.GetPageInfo(abspath, relpath, mode, r.FormValue("GOOS"), r.FormValue("GOARCH"))
 	if pageInfo.Err != nil {
 		log.Print(pageInfo.Err)
-		h.p.ServeError(w, r, relpath, pageInfo.Err)
+		handler.p.ServeError(w, r, relpath, pageInfo.Err)
 		return
 	}
 
@@ -267,7 +265,7 @@ func (h *handlerServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	default:
 		tabtitle = pageInfo.Dirname
 		title = "Directory "
-		if h.p.ShowTimestamps {
+		if handler.p.ShowTimestamps {
 			subtitle = "Last update: " + pageInfo.DirectoryTime.String()
 		}
 	}
@@ -296,22 +294,22 @@ func (h *handlerServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// ------------------------------------------------------------------
 	var sidebar, body []byte
 
-	packages := h.GetPageInfo("/src", "", 2, "", "")
+	packages := handler.GetPageInfo("/src", "", 2, "", "")
 	if packages.Err != nil {
 		log.Fatal(packages.Err)
 		return
 	}
 
-	sidebar = applyTemplate(h.p.SidebarHTML, "sidebarHTML", packages)
+	sidebar = applyTemplate(handler.p.SidebarHTML, "sidebarHTML", packages)
 	// ------------------------------------------------------------------
 
 	if pageInfo.Dirname == "/src" {
-		body = applyTemplate(h.p.PackageRootHTML, "packageRootHTML", pageInfo)
+		body = applyTemplate(handler.p.PackageRootHTML, "packageRootHTML", pageInfo)
 	} else {
-		body = applyTemplate(h.p.PackageHTML, "packageHTML", pageInfo)
+		body = applyTemplate(handler.p.PackageHTML, "packageHTML", pageInfo)
 	}
 
-	h.p.ServePage(w, Page{
+	handler.p.ServePage(w, Page{
 		Title:    title,
 		Tabtitle: tabtitle,
 		Subtitle: subtitle,
@@ -321,10 +319,10 @@ func (h *handlerServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (h *handlerServer) corpusInitialized() bool {
-	h.c.initMu.RLock()
-	defer h.c.initMu.RUnlock()
-	return h.c.initDone
+func (handler *handlerServer) corpusInitialized() bool {
+	handler.c.initMu.RLock()
+	defer handler.c.initMu.RUnlock()
+	return handler.c.initDone
 }
 
 type PageInfoMode uint
@@ -771,19 +769,4 @@ func (p *Presentation) serveFile(w http.ResponseWriter, r *http.Request) {
 func (p *Presentation) ServeText(w http.ResponseWriter, text []byte) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.Write(text)
-}
-
-func marshalJSON(x interface{}) []byte {
-	var data []byte
-	var err error
-	const indentJSON = false // for easier debugging
-	if indentJSON {
-		data, err = json.MarshalIndent(x, "", "    ")
-	} else {
-		data, err = json.Marshal(x)
-	}
-	if err != nil {
-		panic(fmt.Sprintf("json.Marshal failed: %s", err))
-	}
-	return data
 }

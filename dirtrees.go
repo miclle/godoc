@@ -245,26 +245,6 @@ func (c *Corpus) newDirectory(root string, maxDepth int) *Directory {
 	return b.newDirTree(token.NewFileSet(), root, d.Name(), 0)
 }
 
-func (directory *Directory) walk(c chan<- *Directory, skipRoot bool) {
-	if directory != nil {
-		if !skipRoot {
-			c <- directory
-		}
-		for _, d := range directory.SubDirectories {
-			d.walk(c, false)
-		}
-	}
-}
-
-func (directory *Directory) iter(skipRoot bool) <-chan *Directory {
-	c := make(chan *Directory)
-	go func() {
-		directory.walk(c, skipRoot)
-		close(c)
-	}()
-	return c
-}
-
 func (directory *Directory) lookupLocal(name string) *Directory {
 	for _, d := range directory.SubDirectories {
 		if d.Name == name {
