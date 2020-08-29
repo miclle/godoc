@@ -27,7 +27,8 @@ type Page struct {
 	Playground bool
 	Version    string
 
-	Directory *Directory
+	Directory *Directory // sidebar directory
+	PageInfo  *PageInfo  // current package info
 }
 
 // Presentation generates output from a corpus.

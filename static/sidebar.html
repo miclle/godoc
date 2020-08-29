@@ -3,25 +3,21 @@
 	{{/* Nested render directory */}}
 	{{- define "item" -}}
 	{{- range . }}
-		<li>
-			<a
-				class="package"
-				href="/pkg/{{.ImportPath}}"
+		<li class="leaf depth-{{.Depth}}">
+
+			<div class="reference">
+				<a class="package" href="/pkg/{{.ImportPath}}">{{.Name}}</a>
 
 				{{- if gt (len .SubDirectories) 0 }}
-				data-toggle="collapse" data-target="#path{{srcID .Path}}" aria-controls="path{{srcID .Path}}"
+				<button
+					class="btn btn-link expand-icon docs-expand-arrow"
+					data-toggle="collapse"
+					data-target="#path-{{srcID .Path}}"></button>
 				{{end}}
-				>
-
-				{{- if gt (len .SubDirectories) 0 }}
-				<span class="expand-icon docs-expand-arrow"></span>
-				{{end}}
-
-				<span>{{.Name}}</span>
-			</a>
+			</div>
 
 			{{- if gt (len .SubDirectories) 0 }}
-			<ul class="collapse multi-collapse" id="path{{srcID .Path}}">
+			<ul class="collapse multi-collapse" id="path-{{srcID .Path}}">
 				{{template "item" .SubDirectories}}
 			</ul>
 			{{- end}}

@@ -280,6 +280,7 @@ func (handler *handlerServer) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		Title:    title,
 		Tabtitle: tabtitle,
 		Subtitle: subtitle,
+		PageInfo: pageInfo,
 	}
 
 	// set sidebar info
