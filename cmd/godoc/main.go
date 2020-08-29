@@ -396,24 +396,31 @@ type mod struct {
 // general case. It should be replaced by a more direct solution
 // for determining whether a package is third party or not.
 //
-type moduleFS struct{ vfs.FileSystem }
+type moduleFS struct {
+	vfs.FileSystem
+}
 
 func (moduleFS) RootType(path string) vfs.RootType {
 	if !strings.HasPrefix(path, "/src/") {
 		return ""
 	}
+
 	domain := path[len("/src/"):]
 	if i := strings.Index(domain, "/"); i >= 0 {
 		domain = domain[:i]
 	}
+
 	if !strings.Contains(domain, ".") {
 		// No dot in the first element of import path
 		// suggests this is a package in GOROOT.
 		return vfs.RootTypeGoRoot
-	} else {
-		// A dot in the first element of import path
-		// suggests this is a third party package.
-		return vfs.RootTypeGoPath
 	}
+
+	// A dot in the first element of import path
+	// suggests this is a third party package.
+	return vfs.RootTypeGoPath
 }
-func (fs moduleFS) String() string { return "module(" + fs.FileSystem.String() + ")" }
+
+func (fs moduleFS) String() string {
+	return "module(" + fs.FileSystem.String() + ")"
+}
