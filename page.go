@@ -26,6 +26,8 @@ type Page struct {
 	// filled in by ServePage
 	Playground bool
 	Version    string
+
+	Directory *Directory
 }
 
 // Presentation generates output from a corpus.

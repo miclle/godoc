@@ -8,18 +8,17 @@ import (
 	"go/build"
 	"go/doc"
 	"go/token"
-	htmlpkg "html"
+	"html"
 	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
-	pathpkg "path"
+	"path"
 	"path/filepath"
 	"sort"
 	"strings"
 	"text/template"
-	"time"
 
 	"github.com/yosssi/gohtml"
 
@@ -51,7 +50,11 @@ func (handler *handlerServer) registerWithMux(mux *http.ServeMux) {
 // set to the respective error but the error is not logged.
 //
 func (handler *handlerServer) GetPageInfo(abspath, relpath string, mode PageInfoMode, goos, goarch string) *PageInfo {
-	info := &PageInfo{Dirname: abspath, Mode: mode}
+
+	pageInfo := &PageInfo{
+		Dirname: abspath,
+		Mode:    mode,
+	}
 
 	// Restrict to the package files that would be used when building
 	// the package on this system.  This makes sure that if there are
@@ -60,7 +63,7 @@ func (handler *handlerServer) GetPageInfo(abspath, relpath string, mode PageInfo
 	// Note: If goos/goarch aren't set, the current binary's GOOS/GOARCH
 	// are used.
 	ctxt := build.Default
-	ctxt.IsAbsPath = pathpkg.IsAbs
+	ctxt.IsAbsPath = path.IsAbs
 	ctxt.IsDir = func(path string) bool {
 		fi, err := handler.c.fs.Stat(filepath.ToSlash(path))
 		return err == nil && fi.IsDir()
@@ -101,8 +104,8 @@ func (handler *handlerServer) GetPageInfo(abspath, relpath string, mode PageInfo
 	pkginfo, err := ctxt.ImportDir(abspath, 0)
 	// continue if there are no Go source files; we still want the directory info
 	if _, nogo := err.(*build.NoGoError); err != nil && !nogo {
-		info.Err = err
-		return info
+		pageInfo.Err = err
+		return pageInfo
 	}
 
 	// collect package files
@@ -124,15 +127,15 @@ func (handler *handlerServer) GetPageInfo(abspath, relpath string, mode PageInfo
 		fset := token.NewFileSet()
 		files, err := handler.c.parseFiles(fset, relpath, abspath, pkgfiles)
 		if err != nil {
-			info.Err = err
-			return info
+			pageInfo.Err = err
+			return pageInfo
 		}
 
 		// ignore any errors - they are due to unresolved identifiers
 		pkg, _ := ast.NewPackage(fset, files, poorMansImporter, nil)
 
 		// extract package documentation
-		info.FSet = fset
+		pageInfo.FSet = fset
 		if mode&ShowSource == 0 {
 			// show extracted documentation
 			var m doc.Mode
@@ -143,20 +146,20 @@ func (handler *handlerServer) GetPageInfo(abspath, relpath string, mode PageInfo
 				m |= doc.AllMethods
 			}
 
-			importPath := pathpkg.Clean(relpath) // no trailing '/' in importpath
-			info.DocPackage = doc.New(pkg, importPath, m)
+			importPath := path.Clean(relpath) // no trailing '/' in importpath
+			pageInfo.DocPackage = doc.New(pkg, importPath, m)
 			if mode&NoTypeAssoc != 0 {
-				for _, t := range info.DocPackage.Types {
-					info.DocPackage.Consts = append(info.DocPackage.Consts, t.Consts...)
-					info.DocPackage.Vars = append(info.DocPackage.Vars, t.Vars...)
-					info.DocPackage.Funcs = append(info.DocPackage.Funcs, t.Funcs...)
+				for _, t := range pageInfo.DocPackage.Types {
+					pageInfo.DocPackage.Consts = append(pageInfo.DocPackage.Consts, t.Consts...)
+					pageInfo.DocPackage.Vars = append(pageInfo.DocPackage.Vars, t.Vars...)
+					pageInfo.DocPackage.Funcs = append(pageInfo.DocPackage.Funcs, t.Funcs...)
 					t.Consts = nil
 					t.Vars = nil
 					t.Funcs = nil
 				}
 				// for now we cannot easily sort consts and vars since
 				// go/doc.Value doesn't export the order information
-				sort.Sort(funcsByName(info.DocPackage.Funcs))
+				sort.Sort(funcsByName(pageInfo.DocPackage.Funcs))
 			}
 
 			// collect examples
@@ -165,18 +168,18 @@ func (handler *handlerServer) GetPageInfo(abspath, relpath string, mode PageInfo
 			if err != nil {
 				log.Println("parsing examples:", err)
 			}
-			info.Examples = collectExamples(handler.c, pkg, files)
+			pageInfo.Examples = collectExamples(handler.c, pkg, files)
 
 			// collect any notes that we want to show
-			if info.DocPackage.Notes != nil {
+			if pageInfo.DocPackage.Notes != nil {
 				// could regexp.Compile only once per godoc, but probably not worth it
 				if rx := handler.p.NotesRx; rx != nil {
-					for m, n := range info.DocPackage.Notes {
+					for m, n := range pageInfo.DocPackage.Notes {
 						if rx.MatchString(m) {
-							if info.Notes == nil {
-								info.Notes = make(map[string][]*doc.Note)
+							if pageInfo.Notes == nil {
+								pageInfo.Notes = make(map[string][]*doc.Note)
 							}
-							info.Notes[m] = n
+							pageInfo.Notes[m] = n
 						}
 					}
 				}
@@ -189,35 +192,18 @@ func (handler *handlerServer) GetPageInfo(abspath, relpath string, mode PageInfo
 			if mode&NoFiltering == 0 {
 				packageExports(fset, pkg)
 			}
-			info.PAst = files
+			pageInfo.PAst = files
 		}
-		info.IsMain = pkgname == "main"
+		pageInfo.IsMain = pkgname == "main"
 	}
 
-	// get directory information, if any
-	var timestamp time.Time
-	if tree, ts := handler.c.fsTree.Get(); tree != nil && tree.(*Directory) != nil {
-		// directory tree is present; lookup respective directory
-		// (may still fail if the file system was updated and the
-		// new directory tree has not yet been computed)
-		info.Directory = tree.(*Directory).lookup(abspath)
-		timestamp = ts
-	}
-	if info.Directory == nil {
-		// TODO(agnivade): handle this case better, now since there is no CLI mode.
-		// no directory tree present (happens in command-line mode);
-		// compute 2 levels for this page. The second level is to
-		// get the synopses of sub-directories.
-		// note: cannot use path filter here because in general
-		// it doesn't contain the FSTree path
-		info.Directory = handler.c.newDirectory(abspath, 2)
-		timestamp = time.Now()
-	}
+	directory, timestamp := handler.c.Directory(abspath)
 
-	info.DirectoryTime = timestamp
-	info.DirectoryFlat = mode&FlatDir != 0
+	pageInfo.Directory = directory
+	pageInfo.DirectoryTime = timestamp
+	pageInfo.DirectoryFlat = mode&FlatDir != 0
 
-	return info
+	return pageInfo
 }
 
 type funcsByName []*doc.Func
@@ -231,14 +217,14 @@ func (handler *handlerServer) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	relpath := pathpkg.Clean(r.URL.Path[len(handler.stripPrefix)+1:])
+	relpath := path.Clean(r.URL.Path[len(handler.stripPrefix)+1:])
 
 	if !handler.corpusInitialized() {
 		handler.p.ServeError(w, r, relpath, errors.New("scan is not yet complete. Please retry after a few moments"))
 		return
 	}
 
-	abspath := pathpkg.Join(handler.fsRoot, relpath)
+	abspath := path.Join(handler.fsRoot, relpath)
 	mode := handler.p.GetPageInfoMode(r)
 	if relpath == builtinPkgPath {
 		// The fake built-in package contains unexported identifiers,
@@ -272,7 +258,7 @@ func (handler *handlerServer) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	if title == "" {
 		if pageInfo.IsMain {
 			// assume that the directory name is the command name
-			_, tabtitle = pathpkg.Split(relpath)
+			_, tabtitle = path.Split(relpath)
 			title = "Command "
 		} else {
 			title = "Package "
@@ -290,33 +276,25 @@ func (handler *handlerServer) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		tabtitle = "Commands"
 	}
 
-	// set sidebar info
-	// ------------------------------------------------------------------
-	var sidebar, body []byte
-
-	packages := handler.GetPageInfo("/src", "", 2, "", "")
-	if packages.Err != nil {
-		log.Fatal(packages.Err)
-		return
-	}
-
-	sidebar = applyTemplate(handler.p.SidebarHTML, "sidebarHTML", packages)
-	// ------------------------------------------------------------------
-
-	if pageInfo.Dirname == "/src" {
-		body = applyTemplate(handler.p.PackageRootHTML, "packageRootHTML", pageInfo)
-	} else {
-		body = applyTemplate(handler.p.PackageHTML, "packageHTML", pageInfo)
-	}
-
-	handler.p.ServePage(w, Page{
+	page := Page{
 		Title:    title,
 		Tabtitle: tabtitle,
 		Subtitle: subtitle,
+	}
 
-		Sidebar: sidebar,
-		Body:    body,
-	})
+	// set sidebar info
+	// ------------------------------------------------------------------
+	page.Directory, _ = handler.c.Directory("/src")
+	page.Sidebar = applyTemplate(handler.p.SidebarHTML, "sidebarHTML", page)
+	// ------------------------------------------------------------------
+
+	if pageInfo.Dirname == "/src" {
+		page.Body = applyTemplate(handler.p.PackageRootHTML, "packageRootHTML", pageInfo)
+	} else {
+		page.Body = applyTemplate(handler.p.PackageHTML, "packageHTML", pageInfo)
+	}
+
+	handler.p.ServePage(w, page)
 }
 
 func (handler *handlerServer) corpusInitialized() bool {
@@ -504,7 +482,7 @@ func applyTemplateToResponseWriter(rw http.ResponseWriter, t *template.Template,
 }
 
 func redirect(w http.ResponseWriter, r *http.Request) (redirected bool) {
-	canonical := pathpkg.Clean(r.URL.Path)
+	canonical := path.Clean(r.URL.Path)
 	if !strings.HasSuffix(canonical, "/") {
 		canonical += "/"
 	}
@@ -518,7 +496,7 @@ func redirect(w http.ResponseWriter, r *http.Request) (redirected bool) {
 }
 
 func redirectFile(w http.ResponseWriter, r *http.Request) (redirected bool) {
-	c := pathpkg.Clean(r.URL.Path)
+	c := path.Clean(r.URL.Path)
 	c = strings.TrimRight(c, "/")
 	if r.URL.Path != c {
 		url := *r.URL
@@ -546,7 +524,7 @@ func (p *Presentation) serveTextFile(w http.ResponseWriter, r *http.Request, abs
 	s := RangeSelection(r.FormValue("s"))
 	// <a href="abcd">testlink</a>
 	var buf bytes.Buffer
-	if pathpkg.Ext(abspath) == ".go" {
+	if path.Ext(abspath) == ".go" {
 		buf.WriteString("<pre>")
 		formatGoSource(&buf, src, h, s)
 		buf.WriteString("</pre>")
@@ -555,7 +533,7 @@ func (p *Presentation) serveTextFile(w http.ResponseWriter, r *http.Request, abs
 		FormatText(&buf, src, 1, false, h, s)
 		buf.WriteString("</pre>")
 	}
-	fmt.Fprintf(&buf, `<p><a href="/%s?m=text">View as plain text</a></p>`, htmlpkg.EscapeString(relpath))
+	fmt.Fprintf(&buf, `<p><a href="/%s?m=text">View as plain text</a></p>`, html.EscapeString(relpath))
 
 	p.ServePage(w, Page{
 		Title:    title,
@@ -720,7 +698,7 @@ func (p *Presentation) serveFile(w http.ResponseWriter, r *http.Request) {
 	abspath := relpath
 	relpath = relpath[1:] // strip leading slash
 
-	switch pathpkg.Ext(relpath) {
+	switch path.Ext(relpath) {
 	case ".html":
 		if strings.HasSuffix(relpath, "/index.html") {
 			// We'll show index.html for the directory.
@@ -747,7 +725,7 @@ func (p *Presentation) serveFile(w http.ResponseWriter, r *http.Request) {
 		if redirect(w, r) {
 			return
 		}
-		if index := pathpkg.Join(abspath, "index.html"); util.IsTextFile(p.Corpus.fs, index) {
+		if index := path.Join(abspath, "index.html"); util.IsTextFile(p.Corpus.fs, index) {
 			p.ServeHTMLDoc(w, r, index, index)
 			return
 		}

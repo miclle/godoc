@@ -3,6 +3,7 @@ package godoc
 import (
 	"errors"
 	"sync"
+	"time"
 
 	"github.com/miclle/godoc/util"
 	"github.com/miclle/godoc/vfs"
@@ -74,4 +75,35 @@ func (c *Corpus) initFSTree() error {
 	}
 	c.fsTree.Set(dir)
 	return nil
+}
+
+// Directory return tree with abspath
+func (c *Corpus) Directory(abspath string) (*Directory, time.Time) {
+
+	var (
+		directory *Directory
+		timestamp time.Time
+	)
+
+	// get directory information, if any
+	if tree, ts := c.fsTree.Get(); tree != nil && tree.(*Directory) != nil {
+		// directory tree is present; lookup respective directory
+		// (may still fail if the file system was updated and the
+		// new directory tree has not yet been computed)
+		directory = tree.(*Directory).lookup(abspath)
+		timestamp = ts
+	}
+
+	if directory == nil {
+		// TODO(agnivade): handle this case better, now since there is no CLI mode.
+		// no directory tree present (happens in command-line mode);
+		// compute 2 levels for this page. The second level is to
+		// get the synopses of sub-directories.
+		// note: cannot use path filter here because in general
+		// it doesn't contain the FSTree path
+		directory = c.newDirectory(abspath, 2)
+		timestamp = time.Now()
+	}
+
+	return directory, timestamp
 }
