@@ -1,7 +1,20 @@
 package godoc
 
 import (
+	"bytes"
 	"errors"
+	"fmt"
+	"go/ast"
+	"go/build"
+	"go/doc"
+	"go/token"
+	"io"
+	"io/ioutil"
+	"log"
+	"os"
+	"path"
+	"path/filepath"
+	"sort"
 	"sync"
 	"time"
 
@@ -106,4 +119,154 @@ func (c *Corpus) Directory(abspath string) (*Directory, time.Time) {
 	}
 
 	return directory, timestamp
+}
+
+// SyntaxAnalysis parse dir
+func (c *Corpus) SyntaxAnalysis(abspath string) error {
+
+	mode := NoFiltering
+
+	p := &Package{
+		Dir: abspath,
+	}
+
+	// Restrict to the package files that would be used when building
+	// the package on this system.  This makes sure that if there are
+	// separate implementations for, say, Windows vs Unix, we don't
+	// jumble them all together.
+	// Note: If goos/goarch aren't set, the current binary's GOOS/GOARCH
+	// are used.
+	ctxt := build.Default
+	ctxt.IsAbsPath = path.IsAbs
+	ctxt.IsDir = func(path string) bool {
+		fi, err := c.fs.Stat(filepath.ToSlash(path))
+		return err == nil && fi.IsDir()
+	}
+	ctxt.ReadDir = func(dir string) ([]os.FileInfo, error) {
+		f, err := c.fs.ReadDir(filepath.ToSlash(dir))
+		filtered := make([]os.FileInfo, 0, len(f))
+		for _, i := range f {
+			if mode&NoFiltering != 0 || i.Name() != "internal" {
+				filtered = append(filtered, i)
+			}
+		}
+		return filtered, err
+	}
+	ctxt.OpenFile = func(name string) (r io.ReadCloser, err error) {
+		data, err := vfs.ReadFile(c.fs, filepath.ToSlash(name))
+		if err != nil {
+			return nil, err
+		}
+		return ioutil.NopCloser(bytes.NewReader(data)), nil
+	}
+
+	// Make the syscall/js package always visible by default.
+	// It defaults to the host's GOOS/GOARCH, and golang.org's
+	// linux/amd64 means the wasm syscall/js package was blank.
+	// And you can't run godoc on js/wasm anyway, so host defaults
+	// don't make sense here.
+	var goos, goarch string
+	if goos != "" {
+		ctxt.GOOS = goos
+	}
+	if goarch != "" {
+		ctxt.GOARCH = goarch
+	}
+
+	pkginfo, err := ctxt.ImportDir(abspath, 0)
+	// continue if there are no Go source files; we still want the directory info
+	if _, nogo := err.(*build.NoGoError); err != nil && !nogo {
+		return err
+	}
+
+	// collect package files
+	pkgname := pkginfo.Name
+
+	fmt.Println("pkgname: ", pkgname)
+
+	pkgfiles := append(pkginfo.GoFiles, pkginfo.CgoFiles...)
+	if len(pkgfiles) == 0 {
+		// Commands written in C have no .go files in the build.
+		// Instead, documentation may be found in an ignored file.
+		// The file may be ignored via an explicit +build ignore
+		// constraint (recommended), or by defining the package
+		// documentation (historic).
+		pkgname = "main" // assume package main since pkginfo.Name == ""
+		pkgfiles = pkginfo.IgnoredGoFiles
+	}
+
+	// get package information, if any
+	if len(pkgfiles) > 0 {
+		// build package AST
+		fset := token.NewFileSet()
+		files, err := c.parseFiles(fset, "", abspath, pkgfiles)
+		if err != nil {
+			return err
+		}
+
+		// ignore any errors - they are due to unresolved identifiers
+		pkg, _ := ast.NewPackage(fset, files, poorMansImporter, nil)
+
+		// extract package documentation
+		p.FSet = fset
+		if mode&ShowSource == 0 {
+			// show extracted documentation
+			var m doc.Mode
+			if mode&NoFiltering != 0 {
+				m |= doc.AllDecls
+			}
+			if mode&AllMethods != 0 {
+				m |= doc.AllMethods
+			}
+
+			importPath := path.Clean("") // no trailing '/' in importpath
+			p.DocPackage = doc.New(pkg, importPath, m)
+			if mode&NoTypeAssoc != 0 {
+				for _, t := range p.DocPackage.Types {
+					p.DocPackage.Consts = append(p.DocPackage.Consts, t.Consts...)
+					p.DocPackage.Vars = append(p.DocPackage.Vars, t.Vars...)
+					p.DocPackage.Funcs = append(p.DocPackage.Funcs, t.Funcs...)
+					t.Consts = nil
+					t.Vars = nil
+					t.Funcs = nil
+				}
+				// for now we cannot easily sort consts and vars since
+				// go/doc.Value doesn't export the order information
+				sort.Sort(funcsByName(p.DocPackage.Funcs))
+			}
+
+			// collect examples
+			testfiles := append(pkginfo.TestGoFiles, pkginfo.XTestGoFiles...)
+			files, err = c.parseFiles(fset, "", abspath, testfiles)
+			if err != nil {
+				log.Println("parsing examples:", err)
+			}
+			p.Examples = collectExamples(c, pkg, files)
+
+			// collect any notes that we want to show
+			if p.DocPackage.Notes != nil {
+				for m, n := range p.DocPackage.Notes {
+					if p.Notes == nil {
+						p.Notes = make(map[string][]*doc.Note)
+					}
+					p.Notes[m] = n
+				}
+			}
+
+		} else {
+			// show source code
+			// TODO(gri) Consider eliminating export filtering in this mode,
+			//           or perhaps eliminating the mode altogether.
+			if mode&NoFiltering == 0 {
+				packageExports(fset, pkg)
+			}
+			p.PAst = files
+		}
+
+		p.IsMain = pkgname == "main"
+	}
+
+	fmt.Printf("package: %#v", p)
+
+	return nil
 }
