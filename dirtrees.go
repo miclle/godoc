@@ -3,7 +3,6 @@
 package godoc
 
 import (
-	"fmt"
 	"go/doc"
 	"go/parser"
 	"go/token"
