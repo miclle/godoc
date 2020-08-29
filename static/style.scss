@@ -814,7 +814,12 @@ a.error {
 		}
 
 		li.opend {
-			background-color: rgba(224,235,245,.7);
+			background-color: #f0f7ff;
+
+			> .reference .package {
+				font-weight: 700;
+				color: #375EAB;
+			}
 		}
 
 		@for $i from 1 through 10 {
@@ -840,6 +845,8 @@ a.error {
 			background-image: url(/lib/godoc/images/icon-chevron-right.svg);
 			background-repeat: no-repeat;
 			background-position: center;
+			border-radius: 3px;
+
 			&:hover {
 				background-color: #e0ebf5;
 			}
@@ -856,7 +863,6 @@ a.error {
 			padding: .75rem 1.25rem;
 			color: #222;
 
-			&.current,
 			&:hover {
 				background-color: #e0ebf5;
 			}
